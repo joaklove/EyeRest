@@ -342,6 +342,37 @@ class TestSettingsPage(unittest.TestCase):
         self.assertTrue(self.page._combos["sound_scheme"].isEnabled())
         self.assertTrue(self.page._volume_slider.isEnabled())
 
+    def test_spinboxes_have_no_plus_minus_buttons(self) -> None:
+        """V0.5.1：时间控件不渲染 +/- 小按钮，点击数字直接键入。"""
+        from PySide6.QtWidgets import QAbstractSpinBox
+
+        for key, spin in self.page._spinboxes.items():
+            self.assertEqual(
+                spin.buttonSymbols(),
+                QAbstractSpinBox.ButtonSymbols.NoButtons,
+                f"{key} 仍渲染 +/- 按钮",
+            )
+
+    def test_sound_preview_button_emits_scheme(self) -> None:
+        """点击「▶ 试听」应发射 sound_scheme_requested（携带当前方案）。"""
+        self.page._checkboxes["enable_sound"].setChecked(True)
+        schemes: list[str] = []
+        self.page.sound_scheme_requested.connect(schemes.append)
+
+        self.page._preview_button.click()
+        self.assertEqual(schemes, [self.page._combos["sound_scheme"].currentData()])
+
+    def test_sound_and_intensity_hints_exist(self) -> None:
+        """声音触发说明与强度三档说明应以小字形式存在。"""
+        hints = [
+            w.text() for w in self.page.findChildren(type(self.page._status_label))
+            if w.toolTip() == "" and w.text()
+        ]
+        joined = "\n".join(hints)
+        self.assertIn("最多响一次", joined)
+        self.assertIn("安静", joined)
+        self.assertIn("明显", joined)
+
     def test_volume_slider_saved(self) -> None:
         """音量滑块按 0~1 保存。"""
         self.page._volume_slider.setValue(70)

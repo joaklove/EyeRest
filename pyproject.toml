@@ -1,14 +1,10 @@
 [project]
 name = "eyerest"
-version = "0.1.0"
-description = "EyeRest - 低打扰用眼健康助手"
+version = "0.5.1"
+description = "EyeRest - 屏幕使用节奏管理器（眨眼/远眺/活动/深度休息四层节奏）"
 requires-python = ">=3.12"
 dependencies = [
     "PySide6>=6.6.0",
-    "SQLAlchemy>=2.0.0",
-    "pydantic>=2.0.0",
-    "pywin32>=306",
-    "pynput>=1.7.0",
 ]
 
 [build-system]

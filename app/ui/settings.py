@@ -1,16 +1,17 @@
-"""Settings 设置页（V0.5 减法重构：一屏搞定，反馈明确）。
+"""Settings 设置页（V0.5.1 UI & Interaction Fix：纵向分区，层级分明）。
 
 设计要点：
 
-* **紧凑双栏**：六个分组（眨眼 / 远眺 / 活动 / 长休息 / 视觉与声音 / 系统）
-  排成两列，基本不需要滚动；不常用的高级项收进可折叠分组
-* **防误触**：所有时间控件使用 :class:`NoScrollSpinBox`——鼠标滚轮**不会**
-  改变数值，并显示 ``[-] [+]`` 按钮
+* **纵向分区**：从上到下依次是 护眼节奏（眨眼/远眺/活动/长休息）→
+  视觉提醒 → 声音 → 系统行为（弱化置底）。信息层级 = 用户关心程度
+* **直接输入**：所有时间控件去掉 ``[-]/[+]`` 小按钮，点击数字直接键入；
+  鼠标滚轮**不会**改变数值（防误触）
 * **保存反馈**：无改动时「保存设置」禁用；有改动才启用；保存后显示
   ``✓ 设置已保存`` 并重新禁用
 * **恢复默认**：弹出确认框，确认后立即生效并持久化，显示 ``✓`` 反馈
 * **位置设置**：预设位置点击即生效；选择「自定义」会打开位置编辑器，
   期间暂停所有护眼节奏
+* **声音可感知**：音效方案旁提供 ``▶ 试听``，并用小字说明触发规则
 
 除语言外的改动都需点击「保存设置」才持久化；语言切换即时生效。
 全部文案通过 :func:`app.i18n.tr` 翻译，语言切换时即时刷新。
@@ -27,7 +28,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QFrame,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -113,32 +113,38 @@ _COMBO_FIELDS: list[tuple[str, str, list[tuple[str, str]]]] = [
     ]),
 ]
 
-#: 分组定义：(标题 i18n 键, 字段列表, 所在列 0/1, 是否可折叠)
-_GROUP_DEFS: list[tuple[str, list[str], int, bool]] = [
+#: 分区定义：(标题 i18n 键, 字段列表, 层级 0/1/2)
+#: 层级 0 = 护眼节奏（主视觉）；1 = 视觉/声音（次级）；2 = 系统（弱化置底）。
+#: 特殊字段：``__sound_rows__``（方案+试听+音量）、``__intensity_hint__``、
+#: ``__language__``（语言选择行）。
+_SECTION_DEFS: list[tuple[str, list[str], int]] = [
     ("settings.group_blink", [
         "blink_enabled", "blink_cycle_seconds", "blink_cue_interval",
-    ], 0, False),
+    ], 0),
     ("settings.group_look_away", [
         "look_away_enabled", "short_work_duration", "short_break_duration",
-    ], 1, False),
+    ], 0),
     ("settings.group_move", [
         "move_enabled", "move_interval", "move_duration",
-    ], 0, False),
+    ], 0),
     ("settings.group_deep_break", [
         "deep_break_enabled", "long_work_duration", "long_break_duration",
         "postpone_duration", "max_postpone",
-    ], 1, False),
+    ], 0),
     ("settings.group_visual", [
-        "cue_skin", "cue_position", "cue_intensity",
-        "enable_sound", "sound_scheme",
-    ], 0, False),
+        "cue_skin", "cue_position", "cue_intensity", "__intensity_hint__",
+    ], 1),
+    ("settings.group_sound", [
+        "enable_sound", "__sound_rows__",
+    ], 1),
     ("settings.group_system", [
         "auto_start", "minimize_to_tray", "defer_on_fullscreen",
         "enable_notification",
-    ], 1, False),
+    ], 2),
     ("settings.group_advanced", [
         "warning_duration", "idle_threshold", "natural_rest_threshold",
-    ], 0, True),
+    ], 2),
+    ("settings.group_language", ["__language__"], 2),
 ]
 
 _LANGUAGE_ITEMS: list[tuple[str, str]] = [
@@ -148,10 +154,11 @@ _LANGUAGE_ITEMS: list[tuple[str, str]] = [
 
 
 class NoScrollSpinBox(QSpinBox):
-    """禁用滚轮的 SpinBox。
+    """禁用滚轮的 SpinBox（无 +/- 按钮，点击数字直接键入）。
 
     设置页滚动时鼠标滚轮极易误改数值（例如 20 分钟变 21 分钟）。
-    这里直接忽略滚轮事件，数值只能通过 ``[-]/[+]`` 按钮或键盘修改。
+    这里直接忽略滚轮事件，数值只能通过键盘输入或上下方向键修改；
+    不渲染 ``[-]/[+]`` 小按钮，视觉上就是「一个可点进去改的数字」。
     """
 
     def wheelEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
@@ -197,6 +204,8 @@ class SettingsPage(QWidget):
         self._language_label: QLabel | None = None
         self._advanced_group: QGroupBox | None = None
         self._sound_widgets: list[QWidget] = []
+        self._preview_button: QPushButton | None = None
+        self._intensity_hint: QLabel | None = None
         self._modified = False
 
         # 状态提示自动隐藏定时器
@@ -212,7 +221,7 @@ class SettingsPage(QWidget):
     # UI 构建
     # ------------------------------------------------------------------
     def setup_ui(self) -> None:
-        """构建设置页 UI（双栏紧凑布局）。"""
+        """构建设置页 UI（纵向分区，层级自上而下递减）。"""
         self.setStyleSheet(_PAGE_STYLE)
 
         root = QVBoxLayout(self)
@@ -230,30 +239,30 @@ class SettingsPage(QWidget):
         header.addWidget(self._status_label)
         root.addLayout(header)
 
-        # 双栏分组区（放在滚动区内，窗口很小时仍可滚动）
+        # 纵向分区（放在滚动区内，窗口很小时仍可滚动）
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
 
         content = QWidget(scroll)
-        grid = QGridLayout(content)
-        grid.setContentsMargins(0, 0, 8, 0)
-        grid.setHorizontalSpacing(14)
-        grid.setVerticalSpacing(10)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
+        column = QVBoxLayout(content)
+        column.setContentsMargins(0, 0, 8, 0)
+        column.setSpacing(14)
 
-        row_by_col = {0: 0, 1: 0}
-        for title_key, keys, column, collapsible in _GROUP_DEFS:
-            group = self._build_group(title_key, keys, content, collapsible)
-            row = row_by_col[column]
-            grid.addWidget(group, row, column)
-            row_by_col[column] = row + 1
+        prev_tier: int | None = None
+        for title_key, keys, tier in _SECTION_DEFS:
+            # 层级切换处留一道呼吸空隙（节奏区 → 视觉/声音 → 系统）
+            if prev_tier is not None and tier != prev_tier:
+                column.addSpacing(6)
+            prev_tier = tier
 
-        # 语言选择放在系统分组下方（第 1 列末尾）
-        grid.addWidget(self._build_language_group(content), row_by_col[1], 1)
-        grid.setRowStretch(max(row_by_col.values()) + 1, 1)
+            if "__language__" in keys:
+                column.addWidget(self._build_language_group(content))
+                continue
+            group = self._build_group(title_key, keys, content, tier)
+            column.addWidget(group)
 
+        column.addStretch(1)
         scroll.setWidget(content)
         root.addWidget(scroll, 1)
 
@@ -290,11 +299,19 @@ class SettingsPage(QWidget):
         bar.addWidget(self._save_button)
         return bar
 
-    def _group_style(self) -> str:
+    def _group_style(self, tier: int = 0) -> str:
+        """按层级返回分组样式：0=主视觉卡片，1=次级卡片，2=弱化灰卡。"""
+        if tier == 2:
+            return (
+                "QGroupBox { font-weight: normal; font-size: 12px; color: #616161; "
+                "border: 1px solid #ececec; border-radius: 8px; margin-top: 10px; "
+                "padding: 8px 12px 6px 12px; background-color: #fafafa; }"
+                "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
+            )
         return (
             "QGroupBox { font-weight: bold; font-size: 13px; color: #333; "
             "border: 1px solid #e2e2e2; border-radius: 8px; margin-top: 10px; "
-            "padding: 10px 12px 8px 12px; background-color: #ffffff; }"
+            f"padding: {'10px' if tier == 0 else '9px'} 12px 8px 12px; background-color: #ffffff; }}"
             "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
         )
 
@@ -303,23 +320,26 @@ class SettingsPage(QWidget):
         title_key: str,
         keys: list[str],
         parent: QWidget,
-        collapsible: bool = False,
+        tier: int = 0,
     ) -> QGroupBox:
-        """构建一个设置分组。"""
+        """构建一个设置分组（tier 决定视觉权重）。"""
         group = QGroupBox(tr(title_key), parent)
-        group.setStyleSheet(self._group_style())
-        if collapsible:
+        group.setStyleSheet(self._group_style(tier))
+        if title_key == "settings.group_advanced":
             group.setCheckable(True)
             group.setChecked(False)
             self._advanced_group = group
         form = QFormLayout(group)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form.setHorizontalSpacing(12)
-        form.setVerticalSpacing(7)
+        form.setVerticalSpacing(8)
 
         for key in keys:
-            if key == "sound_scheme":
+            if key == "__sound_rows__":
                 self._add_sound_rows(form, group)
+                continue
+            if key == "__intensity_hint__":
+                self._add_intensity_hint(form, group)
                 continue
             spin_def = next((d for d in _SPINBOX_FIELDS if d[0] == key), None)
             if spin_def is not None:
@@ -337,9 +357,9 @@ class SettingsPage(QWidget):
         return group
 
     def _build_language_group(self, parent: QWidget) -> QGroupBox:
-        """构建语言选择分组（即时生效）。"""
+        """构建语言选择分组（即时生效，弱化样式）。"""
         group = QGroupBox(tr("settings.group_language"), parent)
-        group.setStyleSheet(self._group_style())
+        group.setStyleSheet(self._group_style(2))
         form = QFormLayout(group)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form.setHorizontalSpacing(12)
@@ -364,7 +384,8 @@ class SettingsPage(QWidget):
         spin.setRange(minimum, maximum)
         spin.setSuffix(f" {tr(unit_key)}")
         spin.setAlignment(Qt.AlignmentFlag.AlignRight)
-        spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.PlusMinus)
+        # V0.5.1：去掉 +/- 小按钮，点击数字直接键入（滚轮仍被禁用）
+        spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         spin.setFixedWidth(112)
         spin.valueChanged.connect(self._on_value_changed)
         self._spinboxes[key] = spin
@@ -412,11 +433,40 @@ class SettingsPage(QWidget):
         self._combo_labels[key] = label
         form.addRow(label, combo)
 
+    def _add_intensity_hint(self, form: QFormLayout, parent: QWidget) -> None:
+        """强度三档说明（小字，让用户一看就懂每档差异）。"""
+        hint = QLabel(tr("settings.intensity_hint"), parent)
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #9e9e9e; font-size: 11px;")
+        self._intensity_hint = hint
+        form.addRow(hint)
+
     def _add_sound_rows(self, form: QFormLayout, parent: QWidget) -> None:
-        """添加音效方案行 + 音量行（关闭提示音时整组灰掉）。"""
+        """添加音效方案行（含试听按钮）+ 音量行 + 触发说明小字。"""
         combo_def = next(d for d in _COMBO_FIELDS if d[0] == "sound_scheme")
         self._add_combo_row(form, combo_def, parent)
         self._sound_widgets.append(self._combos["sound_scheme"])
+
+        # ▶ 试听按钮：与方案同一行的视觉延伸，让用户立刻验证效果
+        preview_row = QWidget(parent)
+        preview_layout = QHBoxLayout(preview_row)
+        preview_layout.setContentsMargins(0, 0, 0, 0)
+        preview_layout.setSpacing(8)
+        self._preview_button = QPushButton(f"▶ {tr('settings.preview')}", preview_row)
+        self._preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._preview_button.setStyleSheet(
+            "QPushButton { background-color: #f5f5f5; color: #424242; "
+            "border: 1px solid #d5d5d5; border-radius: 5px; "
+            "padding: 4px 14px; font-size: 12px; }"
+            "QPushButton:hover { background-color: #eeeeee; }"
+            "QPushButton:disabled { color: #bdbdbd; border-color: #e0e0e0; }"
+        )
+        self._preview_button.clicked.connect(self._on_preview_sound)
+        preview_layout.addWidget(self._preview_button)
+        preview_layout.addStretch(1)
+        preview_label = QLabel("", preview_row)
+        form.addRow(preview_label, preview_row)
+        self._sound_widgets.extend([preview_row, self._preview_button])
 
         # 音量
         volume_widget = QWidget(parent)
@@ -441,6 +491,22 @@ class SettingsPage(QWidget):
         volume_label = QLabel(tr("settings.sound_volume"), volume_widget)
         form.addRow(volume_label, volume_widget)
         self._sound_widgets.extend([self._volume_slider, self._volume_value_label, volume_label])
+
+        # 触发规则说明（小字）
+        hint = QLabel(tr("settings.sound_hint"), parent)
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #9e9e9e; font-size: 11px;")
+        form.addRow(hint)
+        self._sound_widgets.append(hint)
+
+    def _on_preview_sound(self) -> None:
+        """点击试听：按当前选中方案播放一次。"""
+        combo = self._combos.get("sound_scheme")
+        if combo is None:
+            return
+        scheme = combo.currentData()
+        if scheme:
+            self.sound_scheme_requested.emit(str(scheme))
 
     # ------------------------------------------------------------------
     # 数据加载 / 保存
@@ -678,6 +744,10 @@ class SettingsPage(QWidget):
             self._language_label.setText(tr("settings.language"))
         for group, key in self._groups:
             group.setTitle(tr(key))
+        if self._preview_button is not None:
+            self._preview_button.setText(f"▶ {tr('settings.preview')}")
+        if self._intensity_hint is not None:
+            self._intensity_hint.setText(tr("settings.intensity_hint"))
         for key, label_key, items in _COMBO_FIELDS:
             if key in self._combo_labels:
                 self._combo_labels[key].setText(tr(label_key))

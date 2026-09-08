@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QKeyEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -118,12 +118,26 @@ class PositionEditor(QWidget):
     # 生命周期
     # ------------------------------------------------------------------
     def open_editor(self) -> None:
-        """打开编辑器：铺满整个虚拟桌面并进入预览模式。"""
+        """打开编辑器：铺满整个虚拟桌面并进入预览模式。
+
+        窗口层级（V0.5.1 修复：遮罩必须压在角色下面）::
+
+            Desktop → PositionEditor(暗色遮罩) → VisualCue(可拖动角色)
+
+        因此先显示并提升遮罩，**再**让 VisualCue 进入预览（其
+        ``start_preview`` 内部会 ``show + raise``），最后再补一次
+        ``raise`` 确保角色稳压遮罩之上。
+        """
         union = QGuiApplication.primaryScreen().virtualGeometry()
         self.setGeometry(union)
         self._cue.start_preview()
         self.show()
         self.raise_()
+        # 关键：遮罩 raise 之后，角色必须再 raise 一次才能露出
+        self._cue.raise_()
+        # 事件循环跑一轮后再兜底一次（Windows 上 Tool 窗口的 z-order
+        # 可能在 show 完成后才最终确定）
+        QTimer.singleShot(0, self._cue.raise_)
         logger.info("位置编辑器已打开（护眼节奏暂停）")
 
     def close_editor(self) -> None:

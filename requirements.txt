@@ -1,8 +1,7 @@
 PySide6>=6.6.0
-# V0.5 减法重构：已移除 SQLAlchemy / 数据库层，改用 config.json + stats.json
-pydantic>=2.0.0
-pywin32>=306
-pynput>=1.7.0
+# Windows 检测（空闲/电源/会话/全屏/开机启动）均用标准库 ctypes/winreg 实现，
+# 不需要 pywin32 / pynput / pydantic；V0.5 起持久化为 config.json + stats.json，
+# 无数据库层。
 
 # 打包工具（仅构建时需要）
 pyinstaller>=6.10.0

@@ -11,11 +11,10 @@ EyeRest 是一款基于 20-20-20 规则的用眼健康助手，帮助用户在�
 ## 技术栈
 
 - **Python 3.12+**
-- **PySide6** — Qt6 GUI 框架，提供主窗口、系统托盘、休息窗口
-- **SQLAlchemy 2.0** — ORM，持久化使用记录与休息记录
-- **pydantic 2.0** — 数据模型与配置校验
+- **PySide6** — Qt6 GUI 框架，提供主窗口、系统托盘、休息窗口、视觉提醒
 - **pywin32** — Windows 平台 API（空闲检测、电源事件、会话事件、开机启动）
-- **pynput** — 全局输入活动监听
+- **JSON 持久化**（V0.5 起）——`config.json` + `stats.json` 原子写存储，
+  无数据库、无 ORM；统计记录为「提醒触发次数」而非传感器数据
 
 ## 快速启动
 
@@ -53,7 +52,7 @@ python -m app.main
 ## 打包（One-dir）
 
 ```bash
-# 必须用项目 venv 构建（系统 Python 缺 SQLAlchemy 会产出坏 exe）
+# 必须用项目 venv 构建（保证依赖齐全）
 .venv\Scripts\python.exe -m PyInstaller EyeRest.spec --noconfirm
 ```
 
@@ -89,17 +88,18 @@ python -m app.main
 ```
 apps/EyeRest/
 ├── app/
-│   ├── main.py              # PySide6 应用入口
-│   ├── core/                # 事件总线、状态机、计时/活动/休息引擎
+│   ├── main.py              # PySide6 应用入口（事件装配与接线）
+│   ├── core/                # 事件总线、状态机、屏幕暴露/眨眼/活动/休息引擎
 │   ├── windows/             # Windows 平台检测（空闲/电源/会话/全屏/启动）
-│   ├── database/            # SQLAlchemy 模型、仓库、迁移
-│   ├── ui/                  # 主窗口、Dashboard、统计、设置、休息窗口、托盘
-│   ├── services/            # 业务服务层
-│   ├── config/              # 默认配置
-│   └── utils/               # 日志、时间、系统工具
-├── tests/                   # 单元测试
-├── assets/                  # 图标、音效
-├── installer/               # 安装包脚本
+│   ├── ui/                  # 主窗口、Dashboard、统计、设置、休息窗口、托盘、
+│   │                        #   统一视觉提醒 visual_cue.py、位置编辑器
+│   ├── services/            # 业务服务层 + JSON 存储（settings/stats store）
+│   ├── config/              # 默认配置 + config.json 存储
+│   ├── i18n/                # 中英文案
+│   └── utils/               # 日志、时间、系统工具、音效合成
+├── tests/                   # 单元测试（530+，offscreen UI 测试）
+├── assets/                  # 图标
+├── docs/                    # 版本重构规格文档
 ├── requirements.txt
 ├── pyproject.toml
 └── README.md
@@ -107,8 +107,16 @@ apps/EyeRest/
 
 ## 状态
 
-项目脚手架已完成，核心模块（事件总线、日志、默认配置、主窗口）已实现，
-其余模块为占位，将在后续任务中逐步完善。
+**V0.5.1 — UI & Interaction Fix**：
+
+- 四层护眼节奏（Blink Cycle / Look Away / Move / Deep Break）全部落地，
+  计时基准为屏幕暴露时间
+- 持久化为 `config.json` + `stats.json`（无数据库）
+- 设置页纵向分区重排：时间控件直接键入（无 +/- 按钮）、滚轮防误触、
+  保存/恢复默认有明确反馈、声音提供试听与触发规则说明
+- 自定义提示位置：编辑模式下暂停全部节奏，遮罩之上显示真实角色供拖动
+- 五套合成音效（木质/玻璃/呼吸/自然/铃音）与提醒强度联动
+- 测试基线：530 passed + 3 subtests（offscreen）
 
 ## 许可
 
