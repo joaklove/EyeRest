@@ -42,6 +42,7 @@ from PySide6.QtCore import (
     Signal,
     QPropertyAnimation,
     QPoint,
+    QRect,
 )
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWidgets import (
@@ -368,10 +369,24 @@ class VisualCuePopup(QWidget):
                 pgeo.bottom() - self.height() - margin,
             )
 
-        self.move(self._clamp(pos))
+        self.move(self._clamp(self._to_parent(pos)))
+
+    def _to_parent(self, pos: QPoint) -> QPoint:
+        """把全局屏幕坐标换算为当前坐标系（独立窗口=全局；子控件=父坐标）。"""
+        parent = self.parentWidget()
+        if parent is None:
+            return pos
+        return parent.mapFromGlobal(pos)
 
     def _clamp(self, pos: QPoint) -> QPoint:
-        """边缘保护：限制在虚拟桌面内，并与屏幕边缘保持最小边距。"""
+        """边缘保护：限制在虚拟桌面（子控件模式为编辑器区域）内。"""
+        parent = self.parentWidget()
+        if parent is not None:
+            margin = defaults.CUE_EDGE_MARGIN
+            bounds = parent.rect()
+            pos.setX(max(bounds.left() + margin, min(pos.x(), bounds.right() - self.width() - margin)))
+            pos.setY(max(bounds.top() + margin, min(pos.y(), bounds.bottom() - self.height() - margin)))
+            return pos
         screens = QGuiApplication.screens()
         if not screens:
             return pos
@@ -458,13 +473,21 @@ class VisualCuePopup(QWidget):
         super().mouseReleaseEvent(event)
 
     # ------------------------------------------------------------------
-    # 位置编辑模式（V0.5：自定义位置时暂停节奏，角色静止可拖动）
+    # 位置编辑模式（V0.5.1：reparent 为编辑器子控件，杜绝 Z-order 竞争）
     # ------------------------------------------------------------------
-    def start_preview(self, with_text: bool = True) -> None:
+    def start_preview(self, host: Optional["QWidget"] = None, with_text: bool = True) -> None:
         """进入位置编辑预览：静止显示、不眨眼、不倒计时、不自动消失。
 
         与 :meth:`show_cue` 的区别：不启动任何定时器，拖动结束也不自动
         保存（由位置编辑器显式保存并给出反馈）。
+
+        Args:
+            host: 编辑器窗口（V0.5.1 起传入）。提供时本组件会临时
+                **reparent 为 host 的子控件**——整个位置编辑过程只存在
+                一个顶层窗口，Windows 下不再有多个 Tool/TopMost 窗口
+                之间的 Z-order 竞争问题。``None`` 时保持独立顶层窗口
+                （仅用于旧测试兼容）。
+            with_text: 预览时是否显示文字。
         """
         # 先停掉可能正在进行的提示
         self._hide_timer.stop()
@@ -481,20 +504,37 @@ class VisualCuePopup(QWidget):
         self._text.setVisible(with_text)
         self._progress.setVisible(False)
 
+        # reparent：从独立顶层窗口变为 host 的子控件（单顶层窗口架构）。
+        # 若当前已是 host 的子控件（重复进入），跳过。
+        if host is not None and self.parentWidget() is not host:
+            self.setParent(host)
+            self.setWindowFlags(Qt.WindowType.Widget)
         self._preview = True
         self._visible = False  # 预览不算"提示正在展示"
         self.adjustSize()
         self._place()
         self.setCursor(Qt.CursorShape.OpenHandCursor)
         self.show()
-        self.raise_()
+        if self.isWindow():
+            self.raise_()
         self._opacity.setOpacity(1.0)
-        logger.debug("已进入位置编辑预览")
+        logger.debug(
+            "已进入位置编辑预览（host=%s）",
+            "编辑器" if self.parentWidget() is not None else "独立窗口",
+        )
 
     def end_preview(self) -> None:
-        """退出位置编辑预览并隐藏。"""
+        """退出位置编辑预览并隐藏，恢复为独立顶层窗口。"""
         self._preview = False
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        if self.parentWidget() is not None:
+            # 摆脱编辑器：恢复独立顶层 Tool 窗口（供正常提醒使用）
+            self.setParent(None)
+            self.setWindowFlags(
+                Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.WindowStaysOnTopHint
+                | Qt.WindowType.Tool
+            )
         self.hide()
         logger.debug("已退出位置编辑预览")
 
@@ -507,18 +547,27 @@ class VisualCuePopup(QWidget):
         return self._compute_position()
 
     def _compute_position(self) -> tuple[int, int, int]:
-        """把当前位置换算为相对显示器的局部坐标。"""
+        """把当前位置换算为相对显示器的局部坐标。
+
+        子控件模式（位置编辑中）下用 :meth:`mapToGlobal` 得到真实屏幕
+        坐标，保存数据格式（x/y/monitor）与独立窗口模式完全一致。
+        """
         screens = QGuiApplication.screens()
         if not screens:
             return (0, 0, 0)
-        center = self.frameGeometry().center()
+        if self.parentWidget() is not None:
+            origin_global = self.mapToGlobal(QPoint(0, 0))
+            frame = QRect(origin_global, self.size())
+        else:
+            frame = self.frameGeometry()
+        center = frame.center()
         monitor = 0
         for i, s in enumerate(screens):
             if s.geometry().contains(center):
                 monitor = i
                 break
         origin = screens[min(monitor, len(screens) - 1)].geometry().topLeft()
-        return (self.x() - origin.x(), self.y() - origin.y(), monitor)
+        return (frame.x() - origin.x(), frame.y() - origin.y(), monitor)
 
     def _save_position(self) -> None:
         """把当前位置换算为相对显示器的局部坐标并通知上层保存。"""

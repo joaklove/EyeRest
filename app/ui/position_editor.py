@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QGuiApplication, QKeyEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -59,7 +59,8 @@ class PositionEditor(QWidget):
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
         )
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        # V0.5.1：位置编辑是用户主动进入的明确操作，允许获取焦点——
+        # 这样 Esc / Enter 键盘操作才可靠（不设 WA_ShowWithoutActivating）。
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowTitle(tr("position.title"))
 
@@ -118,27 +119,25 @@ class PositionEditor(QWidget):
     # 生命周期
     # ------------------------------------------------------------------
     def open_editor(self) -> None:
-        """打开编辑器：铺满整个虚拟桌面并进入预览模式。
+        """打开编辑器：铺满虚拟桌面，VisualCue 以子控件形式进入编辑舞台。
 
-        窗口层级（V0.5.1 修复：遮罩必须压在角色下面）::
+        V0.5.1 架构（单顶层窗口，禁止依赖 Z-order）::
 
-            Desktop → PositionEditor(暗色遮罩) → VisualCue(可拖动角色)
+            PositionEditor（唯一顶层窗口：遮罩 + 提示 + 按钮，允许焦点）
+                └── VisualCuePopup（临时 reparent 为子控件，可拖动）
 
-        因此先显示并提升遮罩，**再**让 VisualCue 进入预览（其
-        ``start_preview`` 内部会 ``show + raise``），最后再补一次
-        ``raise`` 确保角色稳压遮罩之上。
+        打开流程：暂停节奏（由调用方负责）→ 遮罩 show + activateWindow
+        → VisualCue reparent 进来 → 眼睛立即出现在遮罩之上。
         """
         union = QGuiApplication.primaryScreen().virtualGeometry()
         self.setGeometry(union)
-        self._cue.start_preview()
         self.show()
         self.raise_()
-        # 关键：遮罩 raise 之后，角色必须再 raise 一次才能露出
-        self._cue.raise_()
-        # 事件循环跑一轮后再兜底一次（Windows 上 Tool 窗口的 z-order
-        # 可能在 show 完成后才最终确定）
-        QTimer.singleShot(0, self._cue.raise_)
-        logger.info("位置编辑器已打开（护眼节奏暂停）")
+        self.activateWindow()
+        # VisualCue 成为编辑器的子控件：与遮罩同属一个顶层窗口，
+        # 天然显示在遮罩之上，不存在"谁压谁"的问题。
+        self._cue.start_preview(self)
+        logger.info("位置编辑器已打开（护眼节奏暂停，VisualCue 已嵌入）")
 
     def close_editor(self) -> None:
         """关闭编辑器并退出预览。"""
