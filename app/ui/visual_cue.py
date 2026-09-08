@@ -42,7 +42,6 @@ from PySide6.QtCore import (
     Signal,
     QPropertyAnimation,
     QPoint,
-    QRect,
 )
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWidgets import (
@@ -441,133 +440,40 @@ class VisualCuePopup(QWidget):
     def mouseMoveEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
         """按住拖动提示（位置锁定时无效；边缘保护在 _place/save 中统一处理）。"""
         press = getattr(self, "_press_global", None)
-        if (press is None or self._position_locked) and not self._preview:
+        if press is None or self._position_locked:
             super().mouseMoveEvent(event)
             return
-        if press is None:
-            super().mouseMoveEvent(event)
-            return
-        # 位置编辑模式下忽略"锁定位置"，保证一定能拖动
         current = event.globalPosition().toPoint()
-        if self._preview or (current - press).manhattanLength() > self._DRAG_THRESHOLD:
+        if (current - press).manhattanLength() > self._DRAG_THRESHOLD:
             self._dragged = True
             offset = current - press
             self.move(self._clamp(self._press_local + offset))
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
-        """松开：发生了拖动 → 保存位置；纯点击 → 视为确认（已完成）。
-
-        位置编辑模式下拖动不自动保存（编辑器显式保存），点击不触发确认。
-        """
+        """松开：发生了拖动 → 保存位置；纯点击 → 视为确认（已完成）。"""
         was_dragged = getattr(self, "_dragged", False)
         self._press_global = None
         self._dragged = False
-        if self._preview:
-            super().mouseReleaseEvent(event)
-            return
         if was_dragged:
             self._save_position()
         elif event.button() == Qt.MouseButton.LeftButton:
             self._finish(acted=True)
         super().mouseReleaseEvent(event)
 
-    # ------------------------------------------------------------------
-    # 位置编辑模式（V0.5.1：reparent 为编辑器子控件，杜绝 Z-order 竞争）
-    # ------------------------------------------------------------------
-    def start_preview(self, host: Optional["QWidget"] = None, with_text: bool = True) -> None:
-        """进入位置编辑预览：静止显示、不眨眼、不倒计时、不自动消失。
-
-        与 :meth:`show_cue` 的区别：不启动任何定时器，拖动结束也不自动
-        保存（由位置编辑器显式保存并给出反馈）。
-
-        Args:
-            host: 编辑器窗口（V0.5.1 起传入）。提供时本组件会临时
-                **reparent 为 host 的子控件**——整个位置编辑过程只存在
-                一个顶层窗口，Windows 下不再有多个 Tool/TopMost 窗口
-                之间的 Z-order 竞争问题。``None`` 时保持独立顶层窗口
-                （仅用于旧测试兼容）。
-            with_text: 预览时是否显示文字。
-        """
-        # 先停掉可能正在进行的提示
-        self._hide_timer.stop()
-        self._countdown_timer.stop()
-        self._breath.stop()
-
-        size_scale, _duration_scale = _INTENSITY_SCALE.get(
-            self._intensity, _INTENSITY_SCALE["standard"]
-        )
-        base_size = _ICON_SIZE_BY_SKIN.get(self._skin, 22)
-        self._icon.setText(_ICONS_BY_SKIN[self._skin].get("blink", "👁"))
-        self._icon.setStyleSheet(f"font-size: {int(base_size * size_scale)}px;")
-        self._text.setText(tr("cue.blink") if with_text else "")
-        self._text.setVisible(with_text)
-        self._progress.setVisible(False)
-
-        # reparent：从独立顶层窗口变为 host 的子控件（单顶层窗口架构）。
-        # 若当前已是 host 的子控件（重复进入），跳过。
-        if host is not None and self.parentWidget() is not host:
-            self.setParent(host)
-            self.setWindowFlags(Qt.WindowType.Widget)
-        self._preview = True
-        self._visible = False  # 预览不算"提示正在展示"
-        self.adjustSize()
-        self._place()
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
-        self.show()
-        if self.isWindow():
-            self.raise_()
-        self._opacity.setOpacity(1.0)
-        logger.debug(
-            "已进入位置编辑预览（host=%s）",
-            "编辑器" if self.parentWidget() is not None else "独立窗口",
-        )
-
-    def end_preview(self) -> None:
-        """退出位置编辑预览并隐藏，恢复为独立顶层窗口。"""
-        self._preview = False
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        if self.parentWidget() is not None:
-            # 摆脱编辑器：恢复独立顶层 Tool 窗口（供正常提醒使用）
-            self.setParent(None)
-            self.setWindowFlags(
-                Qt.WindowType.FramelessWindowHint
-                | Qt.WindowType.WindowStaysOnTopHint
-                | Qt.WindowType.Tool
-            )
-        self.hide()
-        logger.debug("已退出位置编辑预览")
-
-    def is_previewing(self) -> bool:
-        """是否处于位置编辑预览中。"""
-        return self._preview
-
     def current_position(self) -> tuple[int, int, int]:
         """返回当前位置（相对所在显示器的局部坐标 + 显示器序号）。"""
-        return self._compute_position()
-
-    def _compute_position(self) -> tuple[int, int, int]:
-        """把当前位置换算为相对显示器的局部坐标。
-
-        子控件模式（位置编辑中）下用 :meth:`mapToGlobal` 得到真实屏幕
-        坐标，保存数据格式（x/y/monitor）与独立窗口模式完全一致。
-        """
         screens = QGuiApplication.screens()
         if not screens:
             return (0, 0, 0)
-        if self.parentWidget() is not None:
-            origin_global = self.mapToGlobal(QPoint(0, 0))
-            frame = QRect(origin_global, self.size())
-        else:
-            frame = self.frameGeometry()
-        center = frame.center()
+        center = self.frameGeometry().center()
         monitor = 0
         for i, s in enumerate(screens):
             if s.geometry().contains(center):
                 monitor = i
                 break
         origin = screens[min(monitor, len(screens) - 1)].geometry().topLeft()
-        return (frame.x() - origin.x(), frame.y() - origin.y(), monitor)
+        return (self.x() - origin.x(), self.y() - origin.y(), monitor)
 
     def _save_position(self) -> None:
         """把当前位置换算为相对显示器的局部坐标并通知上层保存。"""

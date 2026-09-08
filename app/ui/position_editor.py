@@ -4,20 +4,31 @@
 
 1. **暂停所有护眼节奏**（Blink / Look Away / Move / Deep Break）——由调用方
    在打开编辑器前设置暂停标志，编辑器关闭后恢复
-2. 角色**静止显示**：不眨眼、不倒计时、不自动消失、不重新定位
-3. 用户拖动角色到满意位置，点「保存位置」
+2. 预览角色**静止显示**：不眨眼、不倒计时、不自动消失、不重新定位
+3. 用户拖动角色到满意位置，点「保存位置」（或 Enter；Esc 取消）
 4. 保存成功给出 ``✓`` 反馈，退出编辑模式，恢复护眼节奏
 
-编辑器本身是一个半透明全屏遮罩，不抢焦点、不影响其它窗口，
-角色由 :class:`~app.ui.visual_cue.VisualCuePopup` 以预览模式呈现，
-因此预览尺寸/皮肤与真实提示完全一致。
+架构（V0.5.1 第二轮重构，**禁止依赖任何 Z-order / raise 操作**）::
+
+    PositionEditor（唯一顶层窗口：遮罩 + 提示 + 按钮，允许焦点）
+        ├── 暗色遮罩（paintEvent 半透明填充）
+        └── VisualCuePreview（普通子控件：静态展示 + 拖动）
+
+正常提醒继续由 :class:`~app.ui.visual_cue.VisualCuePopup`（独立顶层
+窗口）负责；编辑模式使用独立的
+:class:`~app.ui.visual_cue_preview.VisualCuePreview`（普通 QWidget）。
+两个组件职责分离，**不存在任何窗口属性转换**。
+
+坐标模型：编辑器铺满虚拟桌面，即"编辑器坐标 = 虚拟桌面全局坐标"。
+预览在编辑器坐标系内移动；保存时才换算为 monitor-relative (x, y)，
+与既有配置格式完全兼容。
 """
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QGuiApplication, QKeyEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -28,7 +39,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.i18n import tr
-from app.ui.visual_cue import VisualCuePopup
+from app.ui.visual_cue_preview import VisualCuePreview
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,18 +51,13 @@ class PositionEditor(QWidget):
     信号:
         position_saved(int, int, int): 保存位置（x, y, monitor）。
         editor_closed(): 编辑器关闭（无论保存还是取消）。
-
-    Args:
-        cue: 视觉提示组件（会以预览模式显示，供拖动）。
-        parent: 父窗口部件。
     """
 
     position_saved = Signal(int, int, int)
     editor_closed = Signal()
 
-    def __init__(self, cue: VisualCuePopup, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self._cue = cue
         self._saved = False
 
         self.setWindowFlags(
@@ -59,12 +65,13 @@ class PositionEditor(QWidget):
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
         )
-        # V0.5.1：位置编辑是用户主动进入的明确操作，允许获取焦点——
+        # 位置编辑是用户主动进入的明确操作，允许获取焦点——
         # 这样 Esc / Enter 键盘操作才可靠（不设 WA_ShowWithoutActivating）。
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowTitle(tr("position.title"))
 
         self._build_ui()
+        self._preview: Optional[VisualCuePreview] = None
 
     # ------------------------------------------------------------------
     # UI
@@ -118,30 +125,79 @@ class PositionEditor(QWidget):
     # ------------------------------------------------------------------
     # 生命周期
     # ------------------------------------------------------------------
-    def open_editor(self) -> None:
-        """打开编辑器：铺满虚拟桌面，VisualCue 以子控件形式进入编辑舞台。
+    def open_editor(
+        self,
+        skin: str = "minimal",
+        intensity: str = "standard",
+        position_mode: str = "default",
+        pos_x: Optional[int] = None,
+        pos_y: Optional[int] = None,
+        monitor: int = 0,
+    ) -> None:
+        """打开编辑器并显示可拖动预览。
 
-        V0.5.1 架构（单顶层窗口，禁止依赖 Z-order）::
-
-            PositionEditor（唯一顶层窗口：遮罩 + 提示 + 按钮，允许焦点）
-                └── VisualCuePopup（临时 reparent 为子控件，可拖动）
-
-        打开流程：暂停节奏（由调用方负责）→ 遮罩 show + activateWindow
-        → VisualCue reparent 进来 → 眼睛立即出现在遮罩之上。
+        Args:
+            skin: 当前皮肤（与设置同步）。
+            intensity: 当前提醒强度。
+            position_mode: 当前位置模式；``custom`` 且有坐标时预览从
+                上次保存的位置开始，否则从默认位置（主屏底部中央）开始。
+            pos_x / pos_y / monitor: 上次保存的自定义坐标。
         """
         union = QGuiApplication.primaryScreen().virtualGeometry()
         self.setGeometry(union)
+
+        # （重）建预览：普通子控件，无任何窗口属性转换
+        if self._preview is None:
+            self._preview = VisualCuePreview(skin, intensity, with_text=True, parent=self)
+        else:
+            self._preview.configure(skin, intensity)
+
+        self._preview.move(self._start_position(position_mode, pos_x, pos_y, monitor))
+
         self.show()
         self.raise_()
         self.activateWindow()
-        # VisualCue 成为编辑器的子控件：与遮罩同属一个顶层窗口，
-        # 天然显示在遮罩之上，不存在"谁压谁"的问题。
-        self._cue.start_preview(self)
-        logger.info("位置编辑器已打开（护眼节奏暂停，VisualCue 已嵌入）")
+        self._preview.show()
+        self._preview.raise_()
+        logger.info(
+            "位置编辑器已打开（护眼节奏暂停，preview=%s isWindow=%s parent=%s）",
+            self._preview.isVisible(),
+            self._preview.isWindow(),
+            "编辑器" if self._preview.parentWidget() is self else "未知",
+        )
+
+    def _start_position(
+        self,
+        position_mode: str,
+        pos_x: Optional[int],
+        pos_y: Optional[int],
+        monitor: int,
+    ) -> QPoint:
+        """计算预览初始位置（编辑器坐标系）。
+
+        已有 custom 坐标 → 从上次保存的位置开始；
+        否则 → 主屏底部中央（与 VisualCuePopup 默认位置一致）。
+        """
+        union = self.geometry()
+        screens = QGuiApplication.screens()
+        if position_mode == "custom" and pos_x is not None and pos_y is not None and screens:
+            geo = screens[min(max(0, int(monitor)), len(screens) - 1)].geometry()
+            origin = geo.topLeft()
+            # 编辑器铺满虚拟桌面：编辑器坐标 ≈ 虚拟桌面全局坐标
+            return QPoint(origin.x() + int(pos_x) - union.left(),
+                          origin.y() + int(pos_y) - union.top())
+        margin = 24
+        primary = QGuiApplication.primaryScreen()
+        pgeo = primary.availableGeometry() if primary else union
+        return QPoint(
+            pgeo.center().x() - union.left() - (self._preview.width() // 2 if self._preview else 0),
+            pgeo.bottom() - union.top() - margin - (self._preview.height() if self._preview else 0),
+        )
 
     def close_editor(self) -> None:
-        """关闭编辑器并退出预览。"""
-        self._cue.end_preview()
+        """关闭编辑器并隐藏预览（护眼节奏由调用方恢复）。"""
+        if self._preview is not None:
+            self._preview.hide()
         self.hide()
         self.editor_closed.emit()
 
@@ -173,8 +229,11 @@ class PositionEditor(QWidget):
     # 槽
     # ------------------------------------------------------------------
     def _on_save(self) -> None:
-        """保存当前位置并退出编辑模式。"""
-        x, y, monitor = self._cue.current_position()
+        """保存预览当前位置（换算为 monitor-relative 坐标）并退出。"""
+        if self._preview is None:
+            self.close_editor()
+            return
+        x, y, monitor = self._compute_monitor_position()
         self._saved = True
         self.position_saved.emit(x, y, monitor)
         logger.info("位置已保存: (%d, %d) monitor=%d", x, y, monitor)
@@ -185,10 +244,30 @@ class PositionEditor(QWidget):
         logger.info("位置编辑已取消")
         self.close_editor()
 
+    def _compute_monitor_position(self) -> tuple[int, int, int]:
+        """把预览当前位置换算为相对所在显示器的局部坐标 + 显示器序号。"""
+        screens = QGuiApplication.screens()
+        if not screens or self._preview is None:
+            return (0, 0, 0)
+        top_left = self._preview.global_top_left()
+        frame_center = top_left + QPoint(self._preview.width() // 2, self._preview.height() // 2)
+        monitor = 0
+        for i, s in enumerate(screens):
+            if s.geometry().contains(frame_center):
+                monitor = i
+                break
+        origin = screens[min(monitor, len(screens) - 1)].geometry().topLeft()
+        return (top_left.x() - origin.x(), top_left.y() - origin.y(), monitor)
+
     @property
     def saved(self) -> bool:
         """本次编辑是否保存了位置。"""
         return self._saved
+
+    @property
+    def preview(self) -> Optional[VisualCuePreview]:
+        """当前预览组件（测试与调试用）。"""
+        return self._preview
 
     # ------------------------------------------------------------------
     # 语言切换

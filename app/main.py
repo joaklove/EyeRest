@@ -470,7 +470,9 @@ def main() -> int:
     # ------------------------------------------------------------------
     # 位置编辑模式（自定义位置：暂停全部护眼节奏，编辑完恢复）
     # ------------------------------------------------------------------
-    position_editor = PositionEditor(visual_cue)
+    # 编辑模式使用独立的 VisualCuePreview（普通子控件），不再复用
+    # VisualCuePopup——职责分离，不存在窗口属性转换（V0.5.1 教训）。
+    position_editor = PositionEditor()
 
     def _on_position_saved(x: int, y: int, monitor: int) -> None:
         try:
@@ -478,6 +480,10 @@ def main() -> int:
             break_service.set_setting("cue_pos_x", str(x))
             break_service.set_setting("cue_pos_y", str(y))
             break_service.set_setting("cue_pos_monitor", str(monitor))
+            latest = break_service.get_all_settings()
+            visual_cue.apply_position(
+                "custom", latest["cue_pos_x"], latest["cue_pos_y"], latest["cue_pos_monitor"]
+            )
             logger.info("提示位置已保存: (%d, %d) monitor=%d", x, y, monitor)
             window.notify(tr("position.saved_feedback"))
         except Exception:  # noqa: BLE001
@@ -494,7 +500,15 @@ def main() -> int:
         """打开位置编辑器：先暂停护眼节奏，避免编辑过程中被 Cue 覆盖。"""
         editing_position["active"] = True
         visual_cue.hide_cue()
-        position_editor.open_editor()
+        latest = break_service.get_all_settings()
+        position_editor.open_editor(
+            skin=str(latest.get("cue_skin") or "minimal"),
+            intensity=str(latest.get("cue_intensity") or "standard"),
+            position_mode=str(latest.get("cue_position") or "default"),
+            pos_x=latest.get("cue_pos_x"),
+            pos_y=latest.get("cue_pos_y"),
+            monitor=int(latest.get("cue_pos_monitor") or 0),
+        )
 
     def _apply_preset_position(value: str) -> None:
         """预设位置：立即生效（设置页已写入配置，这里同步到提示组件）。"""
