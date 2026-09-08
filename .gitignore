@@ -1,0 +1,26 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# --- 构建 / 打包产物 ---
+build/
+dist/
+.build/
+.tmp/
+
+# --- 运行时数据（便携数据目录，不进版本库） ---
+data/
+*.db
+*.db-journal
+
+# --- IDE / 编辑器 ---
+.idea/
+.vscode/
+*.swp
+
+# --- 系统 ---
+Thumbs.db
+.DS_Store

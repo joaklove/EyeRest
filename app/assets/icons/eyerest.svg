@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- 背景圆 -->
+  <circle cx="32" cy="32" r="30" fill="#4A90E2" stroke="#357ABD" stroke-width="2"/>
+  <!-- 眼睛轮廓 -->
+  <path d="M12 32 Q32 16 52 32 Q32 48 12 32 Z" fill="white" stroke="#357ABD" stroke-width="2"/>
+  <!-- 瞳孔 -->
+  <circle cx="32" cy="32" r="8" fill="#2C3E50"/>
+  <!-- 高光 -->
+  <circle cx="29" cy="29" r="3" fill="white" opacity="0.8"/>
+</svg>
