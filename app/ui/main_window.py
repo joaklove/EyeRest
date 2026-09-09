@@ -58,16 +58,16 @@ _NAV_ITEMS = [
 
 
 class _SidebarButton(QPushButton):
-    """侧边栏导航项：左 2px accent + 白底（激活）/ 透明（默认）/ 暖灰（hover）。"""
+    """侧边栏导航项：圆角 pill 高亮（激活 = 浅绿底 + 深绿字）。"""
 
     _STYLE_TEMPLATE = """
     QPushButton {{
         background-color: {bg};
         color: {text};
         border: none;
-        border-left: 3px solid {accent};
-        border-radius: 0px;
-        padding: 10px 18px 10px 22px;
+        border-radius: {radius}px;
+        margin: 2px 12px;
+        padding: 10px 14px;
         text-align: left;
         font-size: {font}px;
         font-weight: {weight};
@@ -81,16 +81,16 @@ class _SidebarButton(QPushButton):
         super().__init__(f"  {icon}   {text}", parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setCheckable(True)
-        self.setMinimumHeight(42)
+        self.setMinimumHeight(40)
         self._apply(False)
 
     def _apply(self, active: bool) -> None:
         if active:
             self.setStyleSheet(self._STYLE_TEMPLATE.format(
-                bg=tokens.SIDEBAR_ITEM_ACTIVE_BG,
+                bg=tokens.PRIMARY_SOFT,
                 text=tokens.SIDEBAR_ITEM_ACTIVE_TEXT,
-                accent=tokens.PRIMARY,
-                hover=tokens.SIDEBAR_ITEM_ACTIVE_BG,
+                radius=tokens.RADIUS_MD,
+                hover=tokens.PRIMARY_SOFT,
                 font=tokens.BODY,
                 weight=tokens.WEIGHT_BOLD,
             ))
@@ -98,7 +98,7 @@ class _SidebarButton(QPushButton):
             self.setStyleSheet(self._STYLE_TEMPLATE.format(
                 bg="transparent",
                 text=tokens.TEXT_PRIMARY,
-                accent="transparent",
+                radius=tokens.RADIUS_MD,
                 hover=tokens.SIDEBAR_ITEM_HOVER,
                 font=tokens.BODY,
                 weight=tokens.WEIGHT_REGULAR,
@@ -118,7 +118,8 @@ class _AboutPage(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        self.setObjectName("bgCanvasScope")
+        self.setStyleSheet(f"QWidget#bgCanvasScope {{ background-color: {tokens.BG_CANVAS}; }}")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(14)
@@ -239,7 +240,8 @@ class MainWindow(QMainWindow):
 
         # 页面堆叠
         self._stack = QStackedWidget(central)
-        self._stack.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        self._stack.setObjectName("bgCanvasScope")
+        self._stack.setStyleSheet(f"QWidget#bgCanvasScope {{ background-color: {tokens.BG_CANVAS}; }}")
         outer.addWidget(self._stack, 1)
 
         # 第 0 页：Dashboard
@@ -255,6 +257,11 @@ class MainWindow(QMainWindow):
                 blink_engine=self._blink_engine,
                 move_engine=self._move_engine,
                 blink_stats_provider=self._blink_stats_provider,
+                settings_provider=(
+                    self._break_service.get_all_settings
+                    if self._break_service is not None
+                    else None
+                ),
             )
             self._stack.addWidget(self._dashboard)
         else:
@@ -303,21 +310,38 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 22, 0, 14)
         layout.setSpacing(0)
 
-        # Logo + 副标题
-        logo_box = QVBoxLayout()
-        logo_box.setContentsMargins(22, 0, 22, 0)
-        logo_box.setSpacing(2)
-        logo = QLabel(f"👁  {defaults.APP_NAME}", sidebar)
-        logo.setStyleSheet(
-            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.H1}px; font-weight: {tokens.WEIGHT_BOLD};"
+        # Logo + 副标题（圆底徽章 + 品牌名，展示板风格）
+        logo_row = QHBoxLayout()
+        logo_row.setContentsMargins(22, 0, 22, 0)
+        logo_row.setSpacing(10)
+        logo_badge = QLabel("👁", sidebar)
+        logo_badge.setFixedSize(36, 36)
+        logo_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo_badge.setStyleSheet(
+            f"QLabel {{"
+            f"  background-color: {tokens.PRIMARY};"
+            f"  border-radius: 18px;"
+            f"  font-size: 18px;"
+            f"}}"
         )
-        logo_box.addWidget(logo)
+        logo_row.addWidget(logo_badge)
+        logo_col = QVBoxLayout()
+        logo_col.setSpacing(1)
+        logo = QLabel(defaults.APP_NAME, sidebar)
+        logo.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.H2}px; font-weight: {tokens.WEIGHT_BOLD};"
+        )
+        logo_col.addWidget(logo)
         sub = QLabel(tr("sidebar.tagline"), sidebar)
         sub.setStyleSheet(
             f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px;"
         )
         sub.setWordWrap(True)
-        logo_box.addWidget(sub)
+        logo_col.addWidget(sub)
+        logo_row.addLayout(logo_col, 1)
+        logo_box = QVBoxLayout()
+        logo_box.setContentsMargins(0, 0, 0, 0)
+        logo_box.addLayout(logo_row)
 
         # 状态徽章
         self._status_badge = QLabel(f"●  {tr('main.state_active')}", sidebar)
@@ -364,7 +388,8 @@ class MainWindow(QMainWindow):
     def _build_placeholder(self, text_key: str) -> QWidget:
         """占位页（依赖缺失时显示）。"""
         page = QWidget()
-        page.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        page.setObjectName("bgCanvasScope")
+        page.setStyleSheet(f"QWidget#bgCanvasScope {{ background-color: {tokens.BG_CANVAS}; }}")
         layout = QVBoxLayout(page)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label = QLabel(tr(text_key), page)
@@ -474,6 +499,7 @@ class MainWindow(QMainWindow):
         self._dashboard.quick_break_requested.connect(self._on_quick_break)
         self._dashboard.pause_30m_requested.connect(self._on_pause_30m)
         self._dashboard.reset_requested.connect(self._on_reset)
+        self._dashboard.open_settings_requested.connect(self.show_settings)
 
     def _on_quick_break(self) -> None:
         logger.info("用户触发立即休息")
@@ -602,7 +628,15 @@ class MainWindow(QMainWindow):
         self._settings_page.position_custom_requested.connect(_open_editor)
         self._settings_page.position_preset_requested.connect(_apply_preset)
         self._settings_page.sound_scheme_requested.connect(_preview_sound)
-        self._settings_page.settings_changed.connect(lambda _d: None)
+        self._settings_page.settings_changed.connect(self._on_settings_changed)
+
+    def _on_settings_changed(self, _changed: dict) -> None:
+        """设置保存后刷新 Dashboard 快捷入口的当前值副文本。"""
+        if self._dashboard is not None:
+            try:
+                self._dashboard.refresh_quick_values()
+            except Exception:  # noqa: BLE001
+                logger.exception("刷新快捷设置显示失败")
 
     def notify(self, text: str) -> None:
         """在 Sidebar 状态徽章 + 设置页提示区显示轻量反馈。"""

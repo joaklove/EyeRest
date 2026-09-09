@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -232,11 +233,15 @@ class SettingsPage(QWidget):
         # 标题行（标题 + 状态提示）
         header = QHBoxLayout()
         self._title_label = QLabel(tr("settings.title"), self)
-        self._title_label.setStyleSheet("font-size: 19px; font-weight: bold; color: #212121;")
+        self._title_label.setStyleSheet(
+            f"font-size: 19px; font-weight: bold; color: {tokens.TEXT_PRIMARY};"
+        )
         header.addWidget(self._title_label)
         header.addStretch(1)
         self._status_label = QLabel("", self)
-        self._status_label.setStyleSheet("font-size: 13px; color: #2E7D32; font-weight: bold;")
+        self._status_label.setStyleSheet(
+            f"font-size: 13px; color: {tokens.PRIMARY_TEXT}; font-weight: bold;"
+        )
         header.addWidget(self._status_label)
         root.addLayout(header)
 
@@ -251,6 +256,8 @@ class SettingsPage(QWidget):
         column.setSpacing(14)
 
         prev_tier: int | None = None
+        rhythm_groups: list[QGroupBox] = []
+        grid_insert_at: int | None = None
         for title_key, keys, tier in _SECTION_DEFS:
             # 层级切换处留一道呼吸空隙（节奏区 → 视觉/声音 → 系统）
             if prev_tier is not None and tier != prev_tier:
@@ -258,10 +265,27 @@ class SettingsPage(QWidget):
             prev_tier = tier
 
             if "__language__" in keys:
+                if grid_insert_at is None:
+                    grid_insert_at = column.count()
                 column.addWidget(self._build_language_group(content))
                 continue
             group = self._build_group(title_key, keys, content, tier)
+            if tier == 0:
+                # 展示板风格：护眼节奏 4 组 2×2 卡片网格
+                rhythm_groups.append(group)
+                continue
+            if grid_insert_at is None:
+                grid_insert_at = column.count()
             column.addWidget(group)
+
+        if rhythm_groups:
+            grid = QGridLayout()
+            grid.setHorizontalSpacing(12)
+            grid.setVerticalSpacing(12)
+            for i, group in enumerate(rhythm_groups):
+                grid.addWidget(group, i // 2, i % 2)
+            # 网格必须插在节奏区原位（首个非节奏组之前），不能 append 到末尾
+            column.insertLayout(grid_insert_at if grid_insert_at is not None else column.count(), grid)
 
         column.addStretch(1)
         scroll.setWidget(content)
@@ -271,16 +295,16 @@ class SettingsPage(QWidget):
         root.addLayout(self._build_button_bar())
 
     def _build_button_bar(self) -> QHBoxLayout:
-        """构建底部按钮栏（恢复默认 / 保存设置）。"""
+        """构建底部按钮栏（恢复默认 / 保存设置，展示板：左灰右绿）。"""
         bar = QHBoxLayout()
         bar.setSpacing(10)
 
         self._reset_button = QPushButton(tr("settings.reset"), self)
         self._reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._reset_button.setStyleSheet(
-            "QPushButton { background-color: #9e9e9e; color: white; "
-            "border: none; border-radius: 5px; padding: 8px 18px; font-size: 13px; }"
-            "QPushButton:hover { background-color: #757575; }"
+            f"QPushButton {{ background-color: {tokens.BG_SOFT}; color: {tokens.TEXT_SECONDARY}; "
+            f"border: 1px solid {tokens.BORDER}; border-radius: 8px; padding: 8px 18px; font-size: 13px; }}"
+            f"QPushButton:hover {{ background-color: {tokens.BORDER_SOFT}; border-color: {tokens.PRIMARY}; }}"
         )
         self._reset_button.clicked.connect(self._on_reset)
         bar.addWidget(self._reset_button)
@@ -290,30 +314,38 @@ class SettingsPage(QWidget):
         self._save_button = QPushButton(tr("settings.save"), self)
         self._save_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._save_button.setStyleSheet(
-            "QPushButton { background-color: #1976d2; color: white; "
-            "border: none; border-radius: 5px; padding: 8px 26px; font-size: 13px; "
-            "font-weight: bold; }"
-            "QPushButton:hover { background-color: #1565c0; }"
-            "QPushButton:disabled { background-color: #c7c7c7; color: #f5f5f5; }"
+            f"QPushButton {{ background-color: {tokens.PRIMARY}; color: {tokens.TEXT_INVERTED}; "
+            f"border: none; border-radius: 8px; padding: 8px 26px; font-size: 13px; "
+            f"font-weight: bold; }}"
+            f"QPushButton:hover {{ background-color: {tokens.PRIMARY_HOVER}; }}"
+            f"QPushButton:pressed {{ background-color: {tokens.PRIMARY_PRESSED}; }}"
+            f"QPushButton:disabled {{ background-color: {tokens.BG_SOFT}; color: {tokens.TEXT_DISABLED}; }}"
         )
         self._save_button.clicked.connect(self.save_settings)
         bar.addWidget(self._save_button)
         return bar
 
     def _group_style(self, tier: int = 0) -> str:
-        """按层级返回分组样式：0=主视觉卡片，1=次级卡片，2=弱化灰卡。"""
+        """按层级返回分组样式（V0.6.1：全部走 tokens 暖色）。
+
+        0 = 护眼节奏主卡（白底圆角）；1 = 视觉/声音次卡；2 = 弱化暖灰卡。
+        """
         if tier == 2:
             return (
-                "QGroupBox { font-weight: normal; font-size: 12px; color: #616161; "
-                "border: 1px solid #ececec; border-radius: 8px; margin-top: 10px; "
-                "padding: 8px 12px 6px 12px; background-color: #fafafa; }"
-                "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
+                f"QGroupBox {{ font-weight: normal; font-size: 12px; color: {tokens.TEXT_SECONDARY}; "
+                f"border: 1px solid {tokens.BORDER_SOFT}; border-radius: {tokens.RADIUS_MD}px; "
+                f"margin-top: 10px; padding: 8px 12px 6px 12px; background-color: {tokens.BG_SOFT}; }}"
+                f"QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 4px; "
+                f"color: {tokens.TEXT_SECONDARY}; }}"
             )
         return (
-            "QGroupBox { font-weight: bold; font-size: 13px; color: #333; "
-            "border: 1px solid #e2e2e2; border-radius: 8px; margin-top: 10px; "
-            f"padding: {'10px' if tier == 0 else '9px'} 12px 8px 12px; background-color: #ffffff; }}"
-            "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }"
+            f"QGroupBox {{ font-weight: bold; font-size: 13px; color: {tokens.TEXT_PRIMARY}; "
+            f"border: 1px solid {tokens.BORDER_SOFT}; border-radius: {tokens.RADIUS_LG}px; "
+            f"margin-top: 10px; "
+            f"padding: {'12px' if tier == 0 else '10px'} 14px 10px 14px; "
+            f"background-color: {tokens.BG_SURFACE}; }}"
+            f"QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 4px; "
+            f"color: {tokens.PRIMARY_TEXT}; }}"
         )
 
     def _build_group(
@@ -438,7 +470,7 @@ class SettingsPage(QWidget):
         """强度三档说明（小字，让用户一看就懂每档差异）。"""
         hint = QLabel(tr("settings.intensity_hint"), parent)
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #9e9e9e; font-size: 11px;")
+        hint.setStyleSheet(f"color: {tokens.TEXT_MUTED}; font-size: 11px;")
         self._intensity_hint = hint
         form.addRow(hint)
 
@@ -456,11 +488,11 @@ class SettingsPage(QWidget):
         self._preview_button = QPushButton(f"▶ {tr('settings.preview')}", preview_row)
         self._preview_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._preview_button.setStyleSheet(
-            "QPushButton { background-color: #f5f5f5; color: #424242; "
-            "border: 1px solid #d5d5d5; border-radius: 5px; "
-            "padding: 4px 14px; font-size: 12px; }"
-            "QPushButton:hover { background-color: #eeeeee; }"
-            "QPushButton:disabled { color: #bdbdbd; border-color: #e0e0e0; }"
+            f"QPushButton {{ background-color: {tokens.BG_SOFT}; color: {tokens.TEXT_PRIMARY}; "
+            f"border: 1px solid {tokens.BORDER}; border-radius: 6px; "
+            f"padding: 4px 14px; font-size: 12px; }}"
+            f"QPushButton:hover {{ background-color: {tokens.PRIMARY_SOFT}; border-color: {tokens.PRIMARY}; }}"
+            f"QPushButton:disabled {{ color: {tokens.TEXT_DISABLED}; border-color: {tokens.BORDER_SOFT}; }}"
         )
         self._preview_button.clicked.connect(self._on_preview_sound)
         preview_layout.addWidget(self._preview_button)
@@ -483,7 +515,7 @@ class SettingsPage(QWidget):
 
         self._volume_value_label = QLabel("35%", volume_widget)
         self._volume_value_label.setFixedWidth(38)
-        self._volume_value_label.setStyleSheet("color: #666; font-size: 12px;")
+        self._volume_value_label.setStyleSheet(f"color: {tokens.TEXT_SECONDARY}; font-size: 12px;")
 
         volume_layout.addWidget(self._volume_slider)
         volume_layout.addWidget(self._volume_value_label)
@@ -496,7 +528,7 @@ class SettingsPage(QWidget):
         # 触发规则说明（小字）
         hint = QLabel(tr("settings.sound_hint"), parent)
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #9e9e9e; font-size: 11px;")
+        hint.setStyleSheet(f"color: {tokens.TEXT_MUTED}; font-size: 11px;")
         form.addRow(hint)
         self._sound_widgets.append(hint)
 

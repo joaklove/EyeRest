@@ -403,7 +403,9 @@ class StatisticsPage(QWidget):
         # ---- 标题行 + 刷新按钮 ----
         header_layout = QHBoxLayout()
         self._title_label = QLabel(tr("stats.title"))
-        self._title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #333;")
+        self._title_label.setStyleSheet(
+            f"font-size: 20px; font-weight: bold; color: {tokens.TEXT_PRIMARY};"
+        )
         header_layout.addWidget(self._title_label)
         header_layout.addStretch(1)
 
@@ -484,12 +486,12 @@ class StatisticsPage(QWidget):
         frame = QFrame(self)
         frame.setFrameShape(QFrame.Shape.StyledPanel)
         frame.setStyleSheet(
-            """
-            QFrame {
-                background-color: #ffffff;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-            }
+            f"""
+            QFrame {{
+                background-color: {tokens.BG_SURFACE};
+                border: 1px solid {tokens.BORDER_SOFT};
+                border-radius: {tokens.RADIUS_MD}px;
+            }}
             """
         )
         layout = QVBoxLayout(frame)
@@ -497,7 +499,9 @@ class StatisticsPage(QWidget):
         layout.setSpacing(8)
 
         title_label = QLabel(tr(title_key))
-        title_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #444;")
+        title_label.setStyleSheet(
+            f"font-size: 14px; font-weight: bold; color: {tokens.TEXT_PRIMARY};"
+        )
         layout.addWidget(title_label)
         self._section_titles.append((title_label, title_key))
         return frame
@@ -530,10 +534,10 @@ class StatisticsPage(QWidget):
         card.setStyleSheet(
             f"""
             QFrame {{
-                background-color: #ffffff;
-                border: 1px solid #e0e0e0;
+                background-color: {tokens.BG_SURFACE};
+                border: 1px solid {tokens.BORDER_SOFT};
                 border-left: 4px solid {accent_color};
-                border-radius: 6px;
+                border-radius: {tokens.RADIUS_MD}px;
             }}
             """
         )
@@ -542,7 +546,9 @@ class StatisticsPage(QWidget):
         layout.setSpacing(4)
 
         title_label = QLabel(tr(title_key))
-        title_label.setStyleSheet("font-size: 12px; color: #888; background: transparent; border: none;")
+        title_label.setStyleSheet(
+            f"font-size: 12px; color: {tokens.TEXT_SECONDARY}; background: transparent; border: none;"
+        )
         layout.addWidget(title_label)
 
         value_label = QLabel(value)

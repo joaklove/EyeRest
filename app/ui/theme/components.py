@@ -33,6 +33,13 @@ from PySide6.QtWidgets import (
 from . import tokens
 
 
+def rgba(hex_color: str, alpha: float) -> str:
+    """``#RRGGBB`` → ``rgba(r, g, b, a)``（QSS 圆底/软背景用）。"""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
 class SoftCard(QFrame):
     """暖色圆角卡片（白底 + 暖灰边 + 柔和阴影）。"""
 
@@ -133,7 +140,7 @@ class NoScrollSpinBox(QSpinBox):
 
 
 class StatTile(QFrame):
-    """5 列数据小方块（专注时长/眨眼/远眺/活动/长休等指标）。"""
+    """今日数据小方块（展示板风格：彩色圆底图标 + 数值 + 标签 竖排）。"""
 
     def __init__(
         self,
@@ -158,40 +165,46 @@ class StatTile(QFrame):
             f"}}"
         )
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(4)
+        layout.setContentsMargins(10, 14, 10, 12)
+        layout.setSpacing(6)
+        layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
-        top = QHBoxLayout()
-        top.setSpacing(6)
+        # 彩色圆底图标
         self._icon = QLabel(icon, self)
+        self._icon.setFixedSize(36, 36)
+        self._icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._icon.setStyleSheet(
-            f"color: {self._accent}; font-size: 16px; background: transparent;"
+            f"QLabel {{ background-color: {rgba(self._accent, 0.14)};"
+            f" border-radius: 18px; font-size: 16px; }}"
         )
-        top.addWidget(self._icon)
-        self._label = QLabel(label, self)
-        self._label.setStyleSheet(
-            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px; background: transparent;"
-        )
-        top.addWidget(self._label)
-        top.addStretch(1)
-        layout.addLayout(top)
+        layout.addWidget(self._icon, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        # 数值
         self._value = QLabel("--", self)
         font = QFont()
-        font.setPointSize(tokens.H2)
+        font.setPointSize(tokens.H3)
         font.setWeight(tokens.WEIGHT_BOLD)
         self._value.setFont(font)
         self._value.setStyleSheet(
             f"color: {tokens.TEXT_PRIMARY}; background: transparent;"
         )
+        self._value.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self._value)
+
+        # 标签
+        self._label = QLabel(label, self)
+        self._label.setStyleSheet(
+            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px; background: transparent;"
+        )
+        self._label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self._label)
 
     def set_value(self, value: str) -> None:
         self._value.setText(value)
 
 
 class RhythmCard(QFrame):
-    """节奏小卡：图标 + 标题 + 倒计时（4 个节奏指标同款）。"""
+    """节奏小卡（展示板风格：彩色圆底图标 + 标题 + 倒计时）。"""
 
     def __init__(
         self,
@@ -211,24 +224,30 @@ class RhythmCard(QFrame):
             f"}}"
         )
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(6)
+        layout.setContentsMargins(14, 14, 14, 12)
+        layout.setSpacing(8)
 
+        # 顶部：圆底图标 + 标题
         top = QHBoxLayout()
-        top.setSpacing(6)
+        top.setSpacing(10)
         self._icon = QLabel(icon, self)
+        self._icon.setFixedSize(34, 34)
+        self._icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._icon.setStyleSheet(
-            f"font-size: 18px; color: {self._accent}; background: transparent;"
+            f"QLabel {{ background-color: {rgba(accent, 0.14)};"
+            f" border-radius: 17px; font-size: 15px; }}"
         )
         top.addWidget(self._icon)
         self._title = QLabel(title, self)
         self._title.setStyleSheet(
-            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px; background: transparent;"
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.SECONDARY}px;"
+            f" font-weight: {tokens.WEIGHT_MEDIUM}; background: transparent;"
         )
         top.addWidget(self._title)
         top.addStretch(1)
         layout.addLayout(top)
 
+        # 倒计时值
         self._value = QLabel("--", self)
         font = QFont()
         font.setPointSize(tokens.H2 - 2)

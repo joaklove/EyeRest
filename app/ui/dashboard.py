@@ -53,6 +53,7 @@ from app.ui.theme import (
     StatTile,
     tokens,
 )
+from app.ui.theme.components import rgba
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -100,6 +101,59 @@ class _CardFrame(QFrame):
             pass
 
 
+class _QuickTile(QFrame):
+    """快捷设置入口（圆底图标 + 标题 + 当前值）。
+
+    注意：不能用 QPushButton 做容器——其 sizeHint 基于文字而非子布局，
+    子内容会被裁剪；QFrame 由布局驱动尺寸，点击用 mousePressEvent 发信号。
+    """
+
+    clicked = Signal()
+
+    def __init__(self, icon: str, label: str, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet(
+            f"QFrame {{ background-color: transparent;"
+            f" border: none; border-radius: {tokens.RADIUS_MD}px; }}"
+        )
+        col = QVBoxLayout(self)
+        col.setContentsMargins(2, 6, 2, 6)
+        col.setSpacing(6)
+        chip = QLabel(icon, self)
+        chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        chip.setFixedSize(46, 46)
+        chip.setStyleSheet(
+            f"QLabel {{ background-color: {rgba(tokens.PRIMARY, 0.12)};"
+            f" border-radius: 23px; font-size: 20px; }}"
+        )
+        col.addWidget(chip, alignment=Qt.AlignmentFlag.AlignCenter)
+        self._label = QLabel(label, self)
+        self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._label.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.CAPTION}px;"
+            f" font-weight: {tokens.WEIGHT_MEDIUM}; background: transparent;"
+        )
+        col.addWidget(self._label)
+        self._sub = QLabel("", self)
+        self._sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._sub.setStyleSheet(
+            f"color: {tokens.TEXT_MUTED}; font-size: 11px; background: transparent;"
+        )
+        col.addWidget(self._sub)
+
+    def set_sub(self, text: str) -> None:
+        self._sub.setText(text)
+
+    def set_label(self, text: str) -> None:
+        self._label.setText(text)
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
@@ -109,6 +163,8 @@ class Dashboard(QWidget):
     quick_break_requested = Signal()
     pause_30m_requested = Signal()
     reset_requested = Signal()
+    #: 用户点击快捷设置入口（跳转设置页）
+    open_settings_requested = Signal()
 
     def __init__(
         self,
@@ -122,6 +178,7 @@ class Dashboard(QWidget):
         blink_engine: Any = None,
         move_engine: Any = None,
         blink_stats_provider: Any = None,
+        settings_provider: Any = None,
     ) -> None:
         super().__init__(parent)
         self._timer = timer_engine
@@ -133,6 +190,9 @@ class Dashboard(QWidget):
         self._blink = blink_engine
         self._move = move_engine
         self._blink_stats = blink_stats_provider
+        #: 设置读取回调（MainWindow 传入 break_service.get_all_settings），
+        #: 用于快捷设置入口显示当前值
+        self._settings_provider = settings_provider
 
         self._rhythm_title: Optional[QLabel] = None
         self._rhythm_rows: dict[str, dict] = {}
@@ -148,7 +208,8 @@ class Dashboard(QWidget):
     # ------------------------------------------------------------------
     def setup_ui(self) -> None:
         """构建 Dashboard 主页（V0.6 暖色版：滚动区 + 分区块）。"""
-        self.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        self.setObjectName("bgCanvasScope")
+        self.setStyleSheet(f"QWidget#bgCanvasScope {{ background-color: {tokens.BG_CANVAS}; }}")
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -164,7 +225,8 @@ class Dashboard(QWidget):
         outer.addWidget(scroll)
 
         content = QWidget(scroll)
-        content.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        content.setObjectName("bgCanvasScope")
+        content.setStyleSheet(f"QWidget#bgCanvasScope {{ background-color: {tokens.BG_CANVAS}; }}")
         scroll.setWidget(content)
 
         layout = QVBoxLayout(content)
@@ -181,73 +243,115 @@ class Dashboard(QWidget):
         row.addWidget(self._build_status_card(), 2)
         row.addWidget(self._build_quick_settings_card(), 3)
         layout.addLayout(row)
-        # ④ 今日数据 + 倒计时
+        # ④ 今日数据 + 引言卡（展示板第三行：宽统计 + 窄引言）
         row2 = QHBoxLayout()
         row2.setSpacing(14)
         row2.addWidget(self._build_today_stats_card(), 5)
-        row2.addWidget(self._build_break_countdown_card(), 4)
+        row2.addWidget(self._build_quote_card(), 3)
         layout.addLayout(row2)
         # ⑤ 快捷操作
         layout.addLayout(self._build_quick_actions())
         layout.addStretch(1)
 
     # ------------------------------------------------------------------
-    # ① Hero：大号屏幕暴露时间 + 副标题
+    # ① Hero：问候横幅（暖色渐变 + 问候语 + 专注时长胶囊）
     # ------------------------------------------------------------------
     def _build_hero(self) -> QWidget:
-        card = _CardFrame(self)
+        card = QFrame(self)
+        card.setObjectName("HeroCard")
+        card.setStyleSheet(
+            f"QFrame#HeroCard {{"
+            f"  background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+            f"    stop:0 #FFF6E8, stop:0.55 #FDF2E4, stop:1 #EAF7F0);"
+            f"  border: 1px solid {tokens.BORDER_SOFT};"
+            f"  border-radius: {tokens.RADIUS_XL}px;"
+            f"}}"
+        )
         layout = QHBoxLayout(card)
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(20)
 
-        # 左侧文字
+        # 左侧文字列
         text_col = QVBoxLayout()
-        text_col.setSpacing(8)
-        # 状态徽章
+        text_col.setSpacing(6)
+
+        # 状态徽章（pill：圆点 + 状态文字）
         badge_row = QHBoxLayout()
-        badge_row.setSpacing(8)
+        badge_row.setSpacing(6)
         self._status_dot = QLabel("●", card)
         self._status_dot.setStyleSheet(
-            f"color: {tokens.PRIMARY}; font-size: 16px; background: transparent;"
+            f"color: {tokens.PRIMARY}; font-size: 12px; background: transparent;"
         )
         badge_row.addWidget(self._status_dot)
         self._status_label = QLabel(tr("state.active"), card)
         self._status_label.setStyleSheet(
-            f"color: {tokens.PRIMARY_TEXT}; font-size: {tokens.SECONDARY}px;"
+            f"color: {tokens.PRIMARY_TEXT}; font-size: {tokens.CAPTION}px;"
             f" font-weight: {tokens.WEIGHT_MEDIUM};"
+            f" background-color: {rgba(tokens.PRIMARY, 0.14)};"
+            f" border-radius: {tokens.RADIUS_PILL}px; padding: 3px 12px;"
         )
         badge_row.addWidget(self._status_label)
         badge_row.addStretch(1)
         text_col.addLayout(badge_row)
 
-        # 大号时间（屏幕暴露时长）
+        # 问候语 + 祝愿（展示板主视觉）
+        self._hero_greeting = QLabel(tr("dashboard.hero_greeting"), card)
+        self._hero_greeting.setStyleSheet(
+            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.H3}px; background: transparent;"
+        )
+        text_col.addWidget(self._hero_greeting)
+        self._hero_wish = QLabel(tr("dashboard.hero_wish"), card)
+        font = QFont()
+        font.setPointSize(tokens.H1)
+        font.setWeight(tokens.WEIGHT_BOLD)
+        self._hero_wish.setFont(font)
+        self._hero_wish.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; background: transparent;"
+        )
+        text_col.addWidget(self._hero_wish)
+
+        # 专注时长（保留 _active_time_label 供测试/数据流使用，收进胶囊行）
+        time_row = QHBoxLayout()
+        time_row.setSpacing(8)
         self._active_time_label = QLabel("--:--:--", card)
         font = QFont()
-        font.setPointSize(tokens.DISPLAY + 4)
+        font.setPointSize(tokens.H2)
         font.setWeight(tokens.WEIGHT_BOLD)
         self._active_time_label.setFont(font)
         self._active_time_label.setStyleSheet(
-            f"color: {tokens.TEXT_PRIMARY}; background: transparent; line-height: 1.1;"
+            f"color: {tokens.PRIMARY_TEXT}; background-color: {rgba(tokens.PRIMARY, 0.12)};"
+            f" border-radius: {tokens.RADIUS_MD}px; padding: 2px 14px;"
         )
-        text_col.addWidget(self._active_time_label)
-
+        time_row.addWidget(self._active_time_label)
         # 副标题（应用运行时间）
         self._uptime_label = QLabel("", card)
         self._uptime_label.setStyleSheet(
-            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.BODY}px; background: transparent;"
+            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px; background: transparent;"
         )
-        text_col.addWidget(self._uptime_label)
+        time_row.addWidget(self._uptime_label)
+        time_row.addStretch(1)
+        text_col.addLayout(time_row)
         layout.addLayout(text_col, 1)
 
-        # 右侧占位（留白，未来可加插画/角色）
+        # 右侧：柔光圆底大眼 + 角落小语
         right = QVBoxLayout()
-        right.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        hint = QLabel("👁", card)
-        hint.setStyleSheet(
-            f"color: {tokens.PRIMARY}; font-size: 56px; background: transparent;"
+        right.setSpacing(4)
+        tip = QLabel(tr("dashboard.hero_tip"), card)
+        tip.setStyleSheet(
+            f"color: {tokens.TEXT_MUTED}; font-size: {tokens.CAPTION}px; background: transparent;"
         )
-        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        right.addWidget(hint)
+        tip.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        right.addWidget(tip)
+        eye_wrap = QLabel("👁", card)
+        eye_wrap.setFixedSize(72, 72)
+        eye_wrap.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        eye_wrap.setStyleSheet(
+            f"QLabel {{ background-color: {rgba('#FFFFFF', 0.75)};"
+            f" border-radius: 36px; font-size: 34px;"
+            f" border: 1px solid {tokens.BORDER_SOFT}; }}"
+        )
+        right.addWidget(eye_wrap, alignment=Qt.AlignmentFlag.AlignHCenter)
+        right.addStretch(1)
         layout.addLayout(right)
         return card
 
@@ -256,7 +360,8 @@ class Dashboard(QWidget):
     # ------------------------------------------------------------------
     def _build_rhythm_grid(self) -> QWidget:
         wrap = QWidget(self)
-        wrap.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        wrap.setObjectName("bgCanvasScope")
+        wrap.setStyleSheet(f"QWidget#bgCanvasScope {{ background-color: {tokens.BG_CANVAS}; }}")
         layout = QVBoxLayout(wrap)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
@@ -357,7 +462,7 @@ class Dashboard(QWidget):
         return card
 
     # ------------------------------------------------------------------
-    # ④ 快捷设置卡（4 个圆形入口）
+    # ④ 快捷设置卡（4 个可点击圆形入口 + 当前值副文本）
     # ------------------------------------------------------------------
     def _build_quick_settings_card(self) -> QWidget:
         card = _CardFrame(self)
@@ -375,33 +480,74 @@ class Dashboard(QWidget):
         row = QHBoxLayout()
         row.setSpacing(10)
         items = [
-            ("📍", tr("dashboard.quick_position")),
-            ("🎚", tr("dashboard.quick_intensity")),
-            ("🔔", tr("dashboard.quick_sound")),
-            ("⚙", tr("dashboard.quick_more")),
+            ("📍", tr("dashboard.quick_position"), "position"),
+            ("🎚", tr("dashboard.quick_intensity"), "intensity"),
+            ("🔔", tr("dashboard.quick_sound"), "sound"),
+            ("⚙", tr("dashboard.quick_more"), "more"),
         ]
-        for icon, label in items:
-            col = QVBoxLayout()
-            col.setSpacing(6)
-            chip = QLabel(icon, card)
-            chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            chip.setFixedSize(54, 54)
-            chip.setStyleSheet(
-                f"QLabel {{ background-color: {tokens.PRIMARY_SOFT};"
-                f" color: {tokens.PRIMARY_TEXT}; border-radius: {tokens.RADIUS_PILL};"
-                f" font-size: 22px; }}"
-            )
-            col.addWidget(chip, alignment=Qt.AlignmentFlag.AlignCenter)
-            lab = QLabel(label, card)
-            lab.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lab.setStyleSheet(
-                f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px;"
-            )
-            col.addWidget(lab)
-            row.addLayout(col, 1)
+        self._quick_tiles: dict[str, _QuickTile] = {}
+        for icon, label, key in items:
+            tile = _QuickTile(icon, label, card)
+            tile.clicked.connect(self.open_settings_requested.emit)
+            row.addWidget(tile, 1)
+            self._quick_tiles[key] = tile
         layout.addLayout(row)
         layout.addStretch(1)
+        self.refresh_quick_values()
         return card
+
+    def refresh_quick_values(self) -> None:
+        """刷新快捷设置入口的当前值副文本（从 settings_provider 读取）。"""
+        if self._settings_provider is None:
+            return
+        try:
+            settings = dict(self._settings_provider() or {})
+        except Exception:  # noqa: BLE001
+            logger.exception("读取设置用于快捷入口显示失败")
+            return
+        mapping = {
+            "position": (
+                "cue_position",
+                {
+                    "default": "settings.position_default",
+                    "bottom_left": "settings.position_bottom_left",
+                    "bottom_right": "settings.position_bottom_right",
+                    "top_left": "settings.position_top_left",
+                    "top_right": "settings.position_top_right",
+                    "custom": "settings.position_custom",
+                },
+            ),
+            "intensity": (
+                "cue_intensity",
+                {
+                    "quiet": "settings.intensity_quiet",
+                    "standard": "settings.intensity_standard",
+                    "prominent": "settings.intensity_prominent",
+                },
+            ),
+            "sound": (
+                "sound_scheme",
+                {
+                    "breath": "settings.sound_breath",
+                    "wood": "settings.sound_wood",
+                    "glass": "settings.sound_glass",
+                    "nature": "settings.sound_nature",
+                    "bell": "settings.sound_bell",
+                },
+            ),
+        }
+        for tile_key, (setting_key, value_map) in mapping.items():
+            tile = self._quick_tiles.get(tile_key)
+            if tile is None:
+                continue
+            raw = str(settings.get(setting_key, ""))
+            text_key = value_map.get(raw)
+            tile.set_sub(tr(text_key) if text_key else "")
+        # 「更多设置」入口副文本固定为版本号
+        more = self._quick_tiles.get("more")
+        if more is not None:
+            from app.config import defaults as _defaults
+            more.set_sub(f"v{_defaults.APP_VERSION}")
 
     # ------------------------------------------------------------------
     # ⑤ 今日数据（5 个 StatTile）
@@ -454,18 +600,53 @@ class Dashboard(QWidget):
         return card
 
     # ------------------------------------------------------------------
-    # ⑥ 休息倒计时卡（保留作为独立卡占位——若 Hero 与状态卡已用，
-    # 这里简化为一个鼓励文案）
+    # ⑥ 休息倒计时卡（已并入"当前状态"，保留为软删占位）
     # ------------------------------------------------------------------
     def _build_break_countdown_card(self) -> QWidget:
-        # 该卡已并入"当前状态"，此处保留为软删（避免外部引用断）
         wrap = QWidget(self)
-        wrap.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        wrap.setObjectName("bgCanvasScope")
+        wrap.setStyleSheet(f"QWidget#bgCanvasScope {{ background-color: {tokens.BG_CANVAS}; }}")
         lay = QVBoxLayout(wrap)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
-        # 占位留空（不显示）
         return wrap
+
+    # ------------------------------------------------------------------
+    # ⑥+ 引言卡（展示板：适当的停顿，是为了更好的前行）
+    # ------------------------------------------------------------------
+    def _build_quote_card(self) -> QWidget:
+        card = QFrame(self)
+        card.setObjectName("QuoteCard")
+        card.setStyleSheet(
+            f"QFrame#QuoteCard {{"
+            f"  background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+            f"    stop:0 {tokens.ACCENT_SOFT}, stop:1 {rgba(tokens.ACCENT, 0.35)});"
+            f"  border: 1px solid {rgba(tokens.ACCENT_DEEP, 0.25)};"
+            f"  border-radius: {tokens.RADIUS_XL}px;"
+            f"}}"
+        )
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(22, 18, 22, 18)
+        layout.setSpacing(6)
+
+        leaf = QLabel("🌿", card)
+        leaf.setStyleSheet("font-size: 22px; background: transparent;")
+        layout.addWidget(leaf)
+        layout.addStretch(1)
+
+        line1 = QLabel(tr("dashboard.quote_line1"), card)
+        line1.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.H3}px;"
+            f" font-weight: {tokens.WEIGHT_BOLD}; background: transparent;"
+        )
+        layout.addWidget(line1)
+        line2 = QLabel(tr("dashboard.quote_line2"), card)
+        line2.setStyleSheet(
+            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.BODY}px; background: transparent;"
+        )
+        layout.addWidget(line2)
+        layout.addStretch(1)
+        return card
 
     # ------------------------------------------------------------------
     # ⑦ 底部快捷操作
@@ -570,7 +751,13 @@ class Dashboard(QWidget):
         state_text, color = self._state_display(state_name)
         self._status_label.setText(state_text)
         self._status_dot.setStyleSheet(
-            f"color: {color}; font-size: 16px; background: transparent;"
+            f"color: {color}; font-size: 12px; background: transparent;"
+        )
+        self._status_label.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.CAPTION}px;"
+            f" font-weight: {tokens.WEIGHT_MEDIUM};"
+            f" background-color: {rgba(color, 0.16)};"
+            f" border-radius: {tokens.RADIUS_PILL}px; padding: 3px 12px;"
         )
 
     def _state_display(self, state_name: str) -> tuple[str, str]:
@@ -775,9 +962,22 @@ class Dashboard(QWidget):
                 "long": tr("dashboard.rhythm_long"),
             }
             card._title.setText(title_map.get(key, card._title.text()))  # type: ignore[attr-defined]
+        # Hero / 引言 / 快捷设置文案
+        self._hero_greeting.setText(tr("dashboard.hero_greeting"))
+        self._hero_wish.setText(tr("dashboard.hero_wish"))
+        quick_labels = {
+            "position": tr("dashboard.quick_position"),
+            "intensity": tr("dashboard.quick_intensity"),
+            "sound": tr("dashboard.quick_sound"),
+            "more": tr("dashboard.quick_more"),
+        }
+        for key, entry in self._quick_tiles.items():
+            if key in quick_labels:
+                entry.set_label(quick_labels[key])
         # 状态文字
         self._refresh_status()
         # 按钮文字
         self._break_btn.setText(tr("common.rest_now"))
         self._pause_btn.setText(tr("common.pause_30m"))
         self._reset_btn.setText(tr("dashboard.reset_timer"))
+        self.refresh_quick_values()
