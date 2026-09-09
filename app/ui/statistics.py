@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import get_translator, tr
 from app.services.statistics_service import StatisticsService
+from app.ui.theme import tokens
 from app.utils.logger import get_logger
 
 _log = get_logger(__name__)
@@ -370,28 +371,28 @@ class StatisticsPage(QWidget):
     def setup_ui(self) -> None:
         """构建 UI。"""
         self.setStyleSheet(
-            """
-            QScrollArea {
+            f"""
+            QScrollArea {{
                 border: none;
                 background-color: transparent;
-            }
-            QScrollBar:vertical {
+            }}
+            QScrollBar:vertical {{
                 background: transparent;
-                width: 8px;
+                width: 10px;
                 margin: 4px 2px 4px 0;
-            }
-            QScrollBar::handle:vertical {
-                background: #C8C8C8;
-                border-radius: 4px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {tokens.BORDER};
+                border-radius: 5px;
                 min-height: 30px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #A8A8A8;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {tokens.TEXT_MUTED};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0;
-            }
-            QScrollBar:horizontal { height: 0; }
+            }}
+            QScrollBar:horizontal {{ height: 0; }}
             """
         )
 

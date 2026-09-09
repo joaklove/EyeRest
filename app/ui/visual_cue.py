@@ -164,9 +164,9 @@ class VisualCuePopup(QWidget):
         self._card.setStyleSheet(
             """
             QFrame#cueCard {
-                background-color: rgba(28, 32, 44, 235);
+                background-color: rgba(255, 250, 242, 240);
                 border-radius: 22px;
-                border: 1px solid rgba(120, 200, 255, 90);
+                border: 1px solid rgba(76, 202, 184, 90);
             }
             QLabel { color: #eaf4ff; background: transparent; }
             """
@@ -199,7 +199,7 @@ class VisualCuePopup(QWidget):
                 border-radius: 2px;
             }
             QProgressBar::chunk {
-                background-color: #7BD389;
+                background-color: #4CCAB8;
                 border-radius: 2px;
             }
             """

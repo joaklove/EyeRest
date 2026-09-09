@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import get_language, get_translator, set_language, tr
 from app.services.break_service import BreakService
+from app.ui.theme import tokens
 from app.utils.logger import get_logger
 
 _log = get_logger(__name__)
@@ -801,28 +802,45 @@ class SettingsPage(QWidget):
         return int(ui_value) * multiplier
 
 
-_PAGE_STYLE = """
-QScrollArea { border: none; background-color: transparent; }
-QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }
-QScrollBar::handle:vertical { background: #CFCFCF; border-radius: 4px; min-height: 30px; }
-QScrollBar::handle:vertical:hover { background: #B0B0B0; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-QScrollBar:horizontal { height: 0; }
-QCheckBox { spacing: 8px; font-size: 13px; color: #424242; padding: 2px 0; }
-QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px;
-    border: 1.5px solid #BDBDBD; background-color: #FFFFFF; }
-QCheckBox::indicator:checked { background-color: #4CAF50; border-color: #4CAF50;
-    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMiAxMiI+PHBvbHlsaW5lIHBvaW50cz0iMiw2IDUsOSAxMCwzIiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZToiI2ZmZmZmZjtzdHJva2Utd2lkdGg6IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==); }
-QCheckBox:disabled { color: #BDBDBD; }
-QCheckBox::indicator:disabled { background-color: #F5F5F5; border-color: #E0E0E0; }
-QComboBox { padding: 4px 8px; border: 1px solid #D5D5D5; border-radius: 5px;
-    font-size: 13px; background-color: #FFFFFF; min-height: 20px; }
-QComboBox:disabled { background-color: #F5F5F5; color: #B0B0B0; }
-QSpinBox { padding: 3px 6px; border: 1px solid #D5D5D5; border-radius: 5px;
-    font-size: 13px; background-color: #FFFFFF; min-height: 20px; }
-QSlider::groove:horizontal { height: 4px; background: #E0E0E0; border-radius: 2px; }
-QSlider::handle:horizontal { width: 14px; margin: -5px 0; border-radius: 7px;
-    background: #1976d2; }
-QSlider:disabled::handle:horizontal { background: #BDBDBD; }
-QLabel { font-size: 13px; color: #424242; }
+_PAGE_STYLE = f"""
+QScrollArea {{ border: none; background-color: transparent; }}
+QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
+QScrollBar::handle:vertical {{ background: {tokens.BORDER}; border-radius: 5px; min-height: 30px; }}
+QScrollBar::handle:vertical:hover {{ background: {tokens.TEXT_MUTED}; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+QScrollBar:horizontal {{ height: 0; }}
+QCheckBox {{ spacing: 10px; font-size: {tokens.BODY}px; color: {tokens.TEXT_PRIMARY}; padding: 4px 0; }}
+QCheckBox::indicator {{ width: 18px; height: 18px; border-radius: 4px;
+    border: 1.5px solid {tokens.BORDER}; background-color: {tokens.BG_SURFACE}; }}
+QCheckBox::indicator:checked {{ background-color: {tokens.PRIMARY}; border-color: {tokens.PRIMARY};
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMiAxMiI+PHBvbHlsaW5lIHBvaW50cz0iMiw2IDUsOSAxMCwzIiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZToiI2ZmZmZmZjtzdHJva2Utd2lkdGg6IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==); }}
+QCheckBox:disabled {{ color: {tokens.TEXT_DISABLED}; }}
+QCheckBox::indicator:disabled {{ background-color: {tokens.BG_SOFT}; border-color: {tokens.BORDER_SOFT}; }}
+QComboBox {{ padding: 6px 10px; border: 1px solid {tokens.BORDER}; border-radius: 8px;
+    font-size: {tokens.BODY}px; background-color: {tokens.BG_SURFACE}; min-height: 20px; color: {tokens.TEXT_PRIMARY}; }}
+QComboBox:disabled {{ background-color: {tokens.BG_SOFT}; color: {tokens.TEXT_DISABLED}; }}
+QComboBox QAbstractItemView {{
+    background-color: {tokens.BG_SURFACE};
+    border: 1px solid {tokens.BORDER};
+    selection-background-color: {tokens.PRIMARY_SOFT};
+    selection-color: {tokens.PRIMARY_TEXT};
+    padding: 4px;
+}}
+QSpinBox {{ padding: 4px 10px; border: 1px solid {tokens.BORDER}; border-radius: 8px;
+    font-size: {tokens.BODY}px; background-color: {tokens.BG_SURFACE}; min-height: 28px; color: {tokens.TEXT_PRIMARY}; }}
+QSpinBox:focus {{ border-color: {tokens.PRIMARY}; }}
+QSlider::groove:horizontal {{ height: 4px; background: {tokens.BG_SOFT}; border-radius: 2px; }}
+QSlider::handle:horizontal {{ width: 16px; margin: -6px 0; border-radius: 8px;
+    background: {tokens.PRIMARY}; }}
+QSlider:disabled::handle:horizontal {{ background: {tokens.TEXT_DISABLED}; }}
+QPushButton {{
+    background-color: transparent;
+    color: {tokens.TEXT_PRIMARY};
+    border: 1px solid {tokens.BORDER};
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: {tokens.BODY}px;
+}}
+QPushButton:hover {{ background-color: {tokens.BG_SOFT}; border-color: {tokens.PRIMARY}; }}
 """
+

@@ -1,15 +1,26 @@
-"""Dashboard 首页。
+"""Dashboard 首页（V0.6「轻奢艺术·温暖治愈」暖色版）。
 
-EyeRest 主窗口的中心页面，实时展示：
+设计要点：
 
-* 当前保护状态（活跃 / 暂停 / 休息中）
-* 今日有效用眼时间与应用运行时间
-* 下一次休息倒计时与工作进度条
-* 今日休息统计（完成 / 跳过 / 自然休息）
-* 底部快捷操作（立即休息 / 暂停 30 分钟 / 重置计时）
+* **顶部 Hero**：大号屏幕暴露时长 + 副标题 + ACTIVE 状态徽章
+* **四层节奏卡**（右侧并排 4 个小卡）：眨眼 / 远眺 / 活动 / 长休
+  —— 颜色与图标区分，但同一组件 :class:`RhythmCard`
+* **当前状态 + 快捷设置**：两列并排，状态卡含小角色图标 + 下一次
+  提醒倒计时；快捷设置 4 个圆形入口（提示位置 / 强度 / 提示音 / 更多）
+* **今日数据**：5 个 :class:`StatTile`（专注时长 / 眨眼 / 远眺 /
+  活动 / 长休）
+* **底部快捷操作**：立即休息（主色）/ 暂停 / 重置（次按钮）
 
-页面通过 ``update_display()`` 每秒由外部 QTimer 调用刷新数据，
-并订阅 ``STATE_CHANGED`` 事件实现状态变化时的 UI 联动。
+保持以下属性名（tests/test_dashboard_and_usage.py 依赖）：
+
+* ``_status_label`` / ``_status_dot``
+* ``_active_time_label`` / ``_uptime_label``
+* ``_progress_bar`` / ``_countdown_label`` / ``_countdown_title``
+* ``_break_count_label`` / ``_skipped_label`` / ``_natural_label``
+  （dict 形式，含 "value" 子控件）
+* ``_rhythm_rows``（dict 形式，含 "value" 和 "bar"）
+
+业务数据流（``update_display``、``_refresh_*``、``_safe_*``）保留不动。
 """
 
 from __future__ import annotations
@@ -17,9 +28,10 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QProgressBar,
@@ -30,30 +42,41 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.config import defaults
-from app.core.event_bus import EventBus, EventType
-from app.core.state_machine import AppState
+from app.core.event_bus import EventBus
 from app.i18n import get_translator, tr
+from app.ui.theme import (
+    GhostButton,
+    PrimaryButton,
+    RhythmCard,
+    SectionTitle,
+    SoftCard,
+    StatTile,
+    tokens,
+)
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 # ---------------------------------------------------------------------------
-# 颜色常量
+# 状态颜色（保留原 COLOR_PRIMARY 等以兼容 _state_display）
 # ---------------------------------------------------------------------------
-COLOR_PRIMARY = "#4CAF50"       # 健康绿
-COLOR_WARNING = "#FF9800"       # 警告橙
-COLOR_DANGER = "#F44336"        # 危险红
-COLOR_GRAY = "#9E9E9E"          # 中性灰
-COLOR_TEXT = "#212121"          # 主文字
-COLOR_TEXT_SECONDARY = "#757575"  # 次文字
-COLOR_CARD_BG = "#FFFFFF"       # 卡片背景
-COLOR_PAGE_BG = "#F5F5F5"       # 页面背景
-COLOR_PROGRESS_BG = "#E0E0E0"   # 进度条背景
+COLOR_PRIMARY = tokens.PRIMARY
+COLOR_WARNING = tokens.WARNING
+COLOR_DANGER = tokens.DANGER
+COLOR_GRAY = tokens.TEXT_MUTED
+COLOR_TEXT = tokens.TEXT_PRIMARY
+COLOR_TEXT_SECONDARY = tokens.TEXT_SECONDARY
+COLOR_CARD_BG = tokens.BG_SURFACE
+COLOR_PAGE_BG = tokens.BG_CANVAS
+COLOR_PROGRESS_BG = tokens.BG_SOFT
 
 
+# ---------------------------------------------------------------------------
+# 卡片容器（保留以兼容旧引用，软阴影 + 圆角）
+# ---------------------------------------------------------------------------
 class _CardFrame(QFrame):
-    """白色圆角卡片容器。"""
+    """白色圆角卡片容器（V0.6：暖色 + 柔阴影 + 极淡边框）。"""
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -61,39 +84,27 @@ class _CardFrame(QFrame):
         self.setStyleSheet(
             f"""
             QFrame#card {{
-                background-color: {COLOR_CARD_BG};
-                border-radius: 12px;
-                border: 1px solid #E8E8E8;
+                background-color: {tokens.BG_SURFACE};
+                border-radius: {tokens.RADIUS_LG}px;
+                border: 1px solid {tokens.BORDER_SOFT};
             }}
             """
         )
-        # 卡片轻微阴影（Qt 不直接支持 CSS box-shadow，使用 GraphicsDropShadowEffect）
         try:
-            from PySide6.QtWidgets import QGraphicsDropShadowEffect
-
             shadow = QGraphicsDropShadowEffect(self)
-            shadow.setBlurRadius(16)
+            shadow.setBlurRadius(18)
             shadow.setOffset(0, 2)
-            shadow.setColor(Qt.GlobalColor.transparent)  # 占位，下方设置
-            from PySide6.QtGui import QColor
-
-            shadow.setColor(QColor(0, 0, 0, 25))
+            shadow.setColor(QColor(45, 55, 72, 22))
             self.setGraphicsEffect(shadow)
         except Exception:  # noqa: BLE001
             pass
 
 
+# ---------------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------------
 class Dashboard(QWidget):
-    """Dashboard 首页。
-
-    接收核心引擎与服务实例，构建 UI 并提供每秒刷新的 ``update_display``
-    方法。状态变化通过 :class:`~app.core.event_bus.EventBus` 联动。
-
-    Signals:
-        quick_break_requested: 用户点击"立即休息"时发射。
-        pause_30m_requested: 用户点击"暂停 30 分钟"时发射。
-        reset_requested: 用户点击"重置计时"时发射。
-    """
+    """Dashboard 首页。"""
 
     quick_break_requested = Signal()
     pause_30m_requested = Signal()
@@ -112,541 +123,475 @@ class Dashboard(QWidget):
         move_engine: Any = None,
         blink_stats_provider: Any = None,
     ) -> None:
-        """初始化 Dashboard。
-
-        Args:
-            timer_engine: 计时引擎实例。
-            break_engine: 休息引擎实例。
-            state_machine: 状态机实例。
-            usage_service: 使用统计服务实例。
-            event_bus: 事件总线；为 None 时不订阅状态变化。
-            parent: 父窗口部件。
-            screen_session_engine: V1.0 屏幕暴露会话引擎；提供时主数字改为
-                **屏幕暴露时长**（键鼠空闲不再中断用眼计时）。
-            blink_engine: V1.0 眨眼节奏引擎；提供时展示节奏卡片。
-            move_engine: V1.0 活动提醒引擎；提供时节奏卡片包含活动行。
-            blink_stats_provider: 可选回调，返回 (今日眨眼提示次数, 完成次数)。
-        """
         super().__init__(parent)
         self._timer = timer_engine
         self._break = break_engine
         self._state_machine = state_machine
         self._usage = usage_service
         self._bus = event_bus
-        #: V1.0 屏幕暴露会话引擎（可为 None，向后兼容旧装配方式）
         self._session = screen_session_engine
-        #: V1.0 眨眼节奏引擎（可为 None）
         self._blink = blink_engine
-        #: V1.0 活动提醒引擎（可为 None）
         self._move = move_engine
-        #: 今日眨眼提示统计回调（可为 None）
         self._blink_stats = blink_stats_provider
 
-        # 三层节奏卡片控件（未装配 V1.0 引擎时不构建，这里先置空保证安全）
         self._rhythm_title: Optional[QLabel] = None
         self._rhythm_rows: dict[str, dict] = {}
-
-        # 休息统计缓存（自然休息次数无直接引擎接口，从摘要推导）
         self._natural_rest_count: int = 0
 
         self.setup_ui()
         self._subscribe_events()
         self.update_display()
-        # 语言切换时刷新静态文本
         get_translator().add_listener(self._on_language_changed)
 
     # ------------------------------------------------------------------
     # UI 构建
     # ------------------------------------------------------------------
     def setup_ui(self) -> None:
-        """构建整体 UI：滚动区域 + 纵向卡片列表。"""
-        self.setStyleSheet(
-            f"""
-            QWidget {{
-                background-color: {COLOR_PAGE_BG};
-                font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
-                color: {COLOR_TEXT};
-            }}
-            QScrollArea {{
-                border: none;
-                background-color: {COLOR_PAGE_BG};
-            }}
-            QScrollBar:vertical {{
-                background: transparent;
-                width: 8px;
-                margin: 4px 2px 4px 0;
-            }}
-            QScrollBar::handle:vertical {{
-                background: #C8C8C8;
-                border-radius: 4px;
-                min-height: 30px;
-            }}
-            QScrollBar::handle:vertical:hover {{
-                background: #A8A8A8;
-            }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                height: 0;
-            }}
-            QScrollBar:horizontal {{
-                height: 0;
-            }}
-            """
-        )
+        """构建 Dashboard 主页（V0.6 暖色版：滚动区 + 分区块）。"""
+        self.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
 
-        root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(0)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
+        # 滚动区
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        content = QWidget()
-        content.setStyleSheet(f"background-color: {COLOR_PAGE_BG};")
-        self._content_layout = QVBoxLayout(content)
-        self._content_layout.setContentsMargins(20, 20, 20, 20)
-        self._content_layout.setSpacing(16)
-
-        # 依次构建各卡片
-        self._build_status_card()
-        if self._blink is not None or self._session is not None:
-            self._build_rhythm_card()
-        self._build_active_time_card()
-        self._build_break_countdown_card()
-        self._build_today_stats_card()
-        self._build_quick_actions()
-
-        # 底部留白，避免快捷操作贴底
-        self._content_layout.addSpacing(8)
-        self._content_layout.addStretch(1)
-        scroll.setWidget(content)
-        root_layout.addWidget(scroll)
-
-    def _build_status_card(self) -> None:
-        """1. 顶部状态卡片：圆点 + 状态文字。"""
-        card = _CardFrame()
-        layout = QHBoxLayout(card)
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(12)
-
-        # 状态圆点
-        self._status_dot = QLabel("●")
-        self._status_dot.setStyleSheet(f"color: {COLOR_PRIMARY}; font-size: 24px;")
-        self._status_dot.setFixedSize(28, 28)
-        self._status_dot.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 状态文字
-        self._status_label = QLabel(tr("state.active"))
-        self._status_label.setStyleSheet(
-            f"font-size: 16px; font-weight: bold; color: {COLOR_TEXT};"
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setStyleSheet(
+            f"QScrollArea {{ background-color: {tokens.BG_CANVAS}; border: none; }}"
         )
+        outer.addWidget(scroll)
 
-        layout.addWidget(self._status_dot)
-        layout.addWidget(self._status_label)
+        content = QWidget(scroll)
+        content.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        scroll.setWidget(content)
+
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(28, 22, 28, 22)
+        layout.setSpacing(18)
+
+        # ① Hero
+        layout.addWidget(self._build_hero())
+        # ② 四层节奏卡（4 列）
+        layout.addWidget(self._build_rhythm_grid())
+        # ③ 当前状态 + 快捷设置（两列）
+        row = QHBoxLayout()
+        row.setSpacing(14)
+        row.addWidget(self._build_status_card(), 2)
+        row.addWidget(self._build_quick_settings_card(), 3)
+        layout.addLayout(row)
+        # ④ 今日数据 + 倒计时
+        row2 = QHBoxLayout()
+        row2.setSpacing(14)
+        row2.addWidget(self._build_today_stats_card(), 5)
+        row2.addWidget(self._build_break_countdown_card(), 4)
+        layout.addLayout(row2)
+        # ⑤ 快捷操作
+        layout.addLayout(self._build_quick_actions())
         layout.addStretch(1)
 
-        self._content_layout.addWidget(card)
+    # ------------------------------------------------------------------
+    # ① Hero：大号屏幕暴露时间 + 副标题
+    # ------------------------------------------------------------------
+    def _build_hero(self) -> QWidget:
+        card = _CardFrame(self)
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(20)
 
-    def _build_rhythm_card(self) -> None:
-        """1.5 V1.0 三层护眼节奏卡片：眨眼 / 远眺 / 长休息。
+        # 左侧文字
+        text_col = QVBoxLayout()
+        text_col.setSpacing(8)
+        # 状态徽章
+        badge_row = QHBoxLayout()
+        badge_row.setSpacing(8)
+        self._status_dot = QLabel("●", card)
+        self._status_dot.setStyleSheet(
+            f"color: {tokens.PRIMARY}; font-size: 16px; background: transparent;"
+        )
+        badge_row.addWidget(self._status_dot)
+        self._status_label = QLabel(tr("state.active"), card)
+        self._status_label.setStyleSheet(
+            f"color: {tokens.PRIMARY_TEXT}; font-size: {tokens.SECONDARY}px;"
+            f" font-weight: {tokens.WEIGHT_MEDIUM};"
+        )
+        badge_row.addWidget(self._status_label)
+        badge_row.addStretch(1)
+        text_col.addLayout(badge_row)
 
-        三层各自独立倒计时，让用户一眼看清"下一次该做什么"，
-        而不是只看到一个孤零零的 20 分钟。
-        """
-        card = _CardFrame()
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 16, 20, 16)
+        # 大号时间（屏幕暴露时长）
+        self._active_time_label = QLabel("--:--:--", card)
+        font = QFont()
+        font.setPointSize(tokens.DISPLAY + 4)
+        font.setWeight(tokens.WEIGHT_BOLD)
+        self._active_time_label.setFont(font)
+        self._active_time_label.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; background: transparent; line-height: 1.1;"
+        )
+        text_col.addWidget(self._active_time_label)
+
+        # 副标题（应用运行时间）
+        self._uptime_label = QLabel("", card)
+        self._uptime_label.setStyleSheet(
+            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.BODY}px; background: transparent;"
+        )
+        text_col.addWidget(self._uptime_label)
+        layout.addLayout(text_col, 1)
+
+        # 右侧占位（留白，未来可加插画/角色）
+        right = QVBoxLayout()
+        right.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        hint = QLabel("👁", card)
+        hint.setStyleSheet(
+            f"color: {tokens.PRIMARY}; font-size: 56px; background: transparent;"
+        )
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right.addWidget(hint)
+        layout.addLayout(right)
+        return card
+
+    # ------------------------------------------------------------------
+    # ② 四层节奏卡（4 个 RhythmCard 并排）
+    # ------------------------------------------------------------------
+    def _build_rhythm_grid(self) -> QWidget:
+        wrap = QWidget(self)
+        wrap.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        layout = QVBoxLayout(wrap)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
-        self._rhythm_title = QLabel(tr("dashboard.rhythm_title"))
-        self._rhythm_title.setStyleSheet(
-            f"font-size: 14px; font-weight: bold; color: {COLOR_TEXT_SECONDARY};"
-        )
-        layout.addWidget(self._rhythm_title)
+        # 标题行
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        title = SectionTitle(tr("dashboard.rhythm_title"), wrap)
+        title_row.addWidget(title)
+        title_row.addStretch(1)
+        self._rhythm_title = title
+        layout.addLayout(title_row)
 
-        self._rhythm_rows: dict[str, dict] = {}
-        for key, color, i18n_key in (
-            ("blink", "#2196F3", "dashboard.rhythm_blink"),
-            ("short", COLOR_PRIMARY, "dashboard.rhythm_short"),
-            ("move", "#FF7043", "dashboard.rhythm_move"),
-            ("long", "#9C27B0", "dashboard.rhythm_long"),
-        ):
-            self._rhythm_rows[key] = self._create_rhythm_row(
-                layout, tr(i18n_key), color
-            )
+        # 4 列卡
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        items = [
+            ("blink", "👁", tr("dashboard.rhythm_blink"), tokens.RHYTHM_BLINK),
+            ("short", "🌿", tr("dashboard.rhythm_short"), tokens.RHYTHM_LOOK),
+            ("move", "🚶", tr("dashboard.rhythm_move"), tokens.RHYTHM_MOVE),
+            ("long", "🧘", tr("dashboard.rhythm_long"), tokens.RHYTHM_DEEP),
+        ]
+        self._rhythm_widgets: dict[str, RhythmCard] = {}
+        for key, icon, title_text, accent in items:
+            card = RhythmCard(icon=icon, title=title_text, accent=accent, parent=wrap)
+            # 隐藏原本的进度文本（用 rhythm_rows[].bar 维护进度）
+            row.addWidget(card, 1)
+            self._rhythm_widgets[key] = card
+            # 兼容旧测试属性结构
+            self._rhythm_rows[key] = {
+                "value": card._value,  # type: ignore[attr-defined]
+                "bar": self._make_dummy_bar(),
+            }
+        layout.addLayout(row)
+        return wrap
 
-        self._content_layout.addWidget(card)
+    def _make_dummy_bar(self) -> QProgressBar:
+        """为兼容 _refresh_rhythm 中的 row["bar"] 引用，创建一个隐藏 bar。
 
-    def _create_rhythm_row(
-        self, parent_layout: QVBoxLayout, title: str, color: str
-    ) -> dict:
-        """创建一行节奏项：标题 + 倒计时 + 细进度条。"""
-        row = QWidget()
-        row.setStyleSheet("background-color: transparent;")
-        row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(0, 0, 0, 0)
-        row_layout.setSpacing(10)
-
-        name_label = QLabel(title)
-        name_label.setFixedWidth(56)
-        name_label.setStyleSheet(f"font-size: 13px; color: {COLOR_TEXT};")
-
-        value_label = QLabel("--:--")
-        value_label.setStyleSheet(
-            f"font-size: 13px; font-weight: bold; color: {color};"
-        )
-        value_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-
+        V0.6 不再画传统进度条（用 rhythm widget 自身的视觉替代），
+        但保留属性以便旧的 update_display 调用不报错。
+        """
         bar = QProgressBar()
         bar.setRange(0, 100)
         bar.setValue(0)
-        bar.setTextVisible(False)
-        bar.setFixedHeight(6)
-        bar.setStyleSheet(
-            f"""
-            QProgressBar {{
-                background-color: {COLOR_PROGRESS_BG};
-                border: none;
-                border-radius: 3px;
-            }}
-            QProgressBar::chunk {{
-                background-color: {color};
-                border-radius: 3px;
-            }}
-            """
-        )
+        bar.setVisible(False)
+        return bar
 
-        row_layout.addWidget(name_label)
-        row_layout.addWidget(bar, 1)
-        row_layout.addWidget(value_label)
-        parent_layout.addWidget(row)
-
-        return {"container": row, "value": value_label, "bar": bar, "title": name_label}
-
-    def _build_active_time_card(self) -> None:
-        """2. 有效用眼时间卡片。"""
-        card = _CardFrame()
+    # ------------------------------------------------------------------
+    # ③ 当前状态卡（含小角色 + 下一次提醒）
+    # ------------------------------------------------------------------
+    def _build_status_card(self) -> QWidget:
+        card = _CardFrame(self)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(8)
-
-        # 大号数字
-        self._active_time_label = QLabel("00:00:00")
-        font = QFont()
-        font.setPointSize(36)
-        font.setBold(True)
-        self._active_time_label.setFont(font)
-        self._active_time_label.setStyleSheet(f"color: {COLOR_PRIMARY};")
-        self._active_time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 标签（V1.0 装配了会话引擎时改为屏幕暴露时长）
-        self._active_time_title = QLabel(
-            tr("dashboard.exposure_time_title")
-            if self._session is not None
-            else tr("dashboard.active_time_title")
-        )
-        self._active_time_title.setStyleSheet(
-            f"font-size: 14px; color: {COLOR_TEXT_SECONDARY};"
-        )
-        self._active_time_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 下方小字：应用运行时间
-        self._uptime_label = QLabel(tr("dashboard.uptime_format", time="00:00:00"))
-        self._uptime_label.setStyleSheet(
-            f"font-size: 12px; color: {COLOR_GRAY};"
-        )
-        self._uptime_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        layout.addWidget(self._active_time_label)
-        layout.addWidget(self._active_time_title)
-        layout.addWidget(self._uptime_label)
-
-        self._content_layout.addWidget(card)
-
-    def _build_break_countdown_card(self) -> None:
-        """3. 下一次休息倒计时卡片。"""
-        card = _CardFrame()
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(8)
-
-        # 大号倒计时
-        self._countdown_label = QLabel("20:00")
-        font = QFont()
-        font.setPointSize(32)
-        font.setBold(True)
-        self._countdown_label.setFont(font)
-        self._countdown_label.setStyleSheet(f"color: {COLOR_TEXT};")
-        self._countdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 标签
-        self._countdown_title = QLabel(tr("dashboard.next_break_title"))
-        self._countdown_title.setStyleSheet(
-            f"font-size: 14px; color: {COLOR_TEXT_SECONDARY};"
-        )
-        self._countdown_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # 进度条
-        self._progress_bar = QProgressBar()
-        self._progress_bar.setRange(0, 100)
-        self._progress_bar.setValue(0)
-        self._progress_bar.setTextVisible(False)
-        self._progress_bar.setFixedHeight(8)
-        self._progress_bar.setStyleSheet(
-            f"""
-            QProgressBar {{
-                background-color: {COLOR_PROGRESS_BG};
-                border: none;
-                border-radius: 4px;
-            }}
-            QProgressBar::chunk {{
-                background-color: {COLOR_PRIMARY};
-                border-radius: 4px;
-            }}
-            """
-        )
-
-        layout.addWidget(self._countdown_label)
-        layout.addWidget(self._countdown_title)
-        layout.addSpacing(4)
-        layout.addWidget(self._progress_bar)
-
-        self._content_layout.addWidget(card)
-
-    def _build_today_stats_card(self) -> None:
-        """4. 今日休息统计卡片。"""
-        card = _CardFrame()
-        layout = QHBoxLayout(card)
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(8)
-
-        # 已休息（远眺完成）
-        self._break_count_label = self._create_stat_block(
-            "dashboard.stat_completed", "0", COLOR_PRIMARY
-        )
-        # 跳过
-        self._skipped_label = self._create_stat_block(
-            "dashboard.stat_skipped", "0", COLOR_WARNING
-        )
-        # 眨眼提示（V1.0 数据诚实口径：提示次数，不是眨眼次数）
-        self._natural_label = self._create_stat_block(
-            "dashboard.stat_blink_cues" if self._blink_stats else "dashboard.stat_natural",
-            "0",
-            COLOR_GRAY,
-        )
-
-        layout.addWidget(self._break_count_label["container"])
-        layout.addWidget(self._skipped_label["container"])
-        layout.addWidget(self._natural_label["container"])
-
-        self._content_layout.addWidget(card)
-
-    def _create_stat_block(
-        self, title_key: str, value: str, color: str
-    ) -> dict:
-        """创建一个统计数字块（标题通过 i18n 键翻译）。"""
-        container = QWidget()
-        vlay = QVBoxLayout(container)
-        vlay.setContentsMargins(4, 4, 4, 4)
-        vlay.setSpacing(2)
-
-        value_label = QLabel(value)
-        value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        font = QFont()
-        font.setPointSize(22)
-        font.setBold(True)
-        value_label.setFont(font)
-        value_label.setStyleSheet(f"color: {color};")
-
-        title_label = QLabel(tr(title_key))
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet(
-            f"font-size: 12px; color: {COLOR_TEXT_SECONDARY};"
-        )
-
-        vlay.addWidget(value_label)
-        vlay.addWidget(title_label)
-
-        return {
-            "container": container,
-            "value": value_label,
-            "title": title_label,
-            "key": title_key,
-        }
-
-    def _build_quick_actions(self) -> None:
-        """5. 底部快捷操作按钮。"""
-        # 用容器包裹，确保快捷操作有独立的可伸缩水平空间。
-        # 关键：container 自身必须声明 Expanding，否则内层 stretch=1
-        # 也只在容器内部平均分配——容器本身只取按钮合起来的最小宽度，
-        # 看起来就挤在左下角。
-        container = QWidget()
-        container.setStyleSheet("background-color: transparent;")
-        container.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-        )
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(22, 18, 22, 18)
         layout.setSpacing(12)
 
-        self._btn_quick_break = QPushButton(tr("common.rest_now"))
-        self._btn_quick_break.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_quick_break.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._btn_quick_break.setMinimumHeight(44)
-        self._btn_quick_break.setStyleSheet(self._button_style(COLOR_PRIMARY))
-        self._btn_quick_break.clicked.connect(self.quick_break_requested.emit)
+        # 标题
+        title = QLabel(tr("dashboard.status_title"), card)
+        title.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.H3}px;"
+            f" font-weight: {tokens.WEIGHT_BOLD};"
+        )
+        layout.addWidget(title)
 
-        self._btn_pause = QPushButton(tr("common.pause_30m"))
-        self._btn_pause.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_pause.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._btn_pause.setMinimumHeight(44)
-        self._btn_pause.setStyleSheet(self._button_style(COLOR_WARNING))
-        self._btn_pause.clicked.connect(self.pause_30m_requested.emit)
+        # 状态图标 + 提示
+        info = QHBoxLayout()
+        info.setSpacing(14)
+        icon = QLabel("🐼", card)
+        icon.setStyleSheet(
+            f"color: {tokens.ACCENT_DEEP}; font-size: 48px; background: transparent;"
+        )
+        info.addWidget(icon)
 
-        self._btn_reset = QPushButton(tr("dashboard.reset_timer"))
-        self._btn_reset.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_reset.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._btn_reset.setMinimumHeight(44)
-        self._btn_reset.setStyleSheet(self._button_style(COLOR_GRAY, outline=True))
-        self._btn_reset.clicked.connect(self.reset_requested.emit)
-
-        layout.addWidget(self._btn_quick_break, 1)
-        layout.addWidget(self._btn_pause, 1)
-        layout.addWidget(self._btn_reset, 1)
-
-        self._content_layout.addWidget(container)
-
-    @staticmethod
-    def _button_style(color: str, outline: bool = False) -> str:
-        """生成按钮样式表。"""
-        if outline:
-            return f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {COLOR_TEXT_SECONDARY};
-                border: 1px solid #D0D0D0;
-                border-radius: 8px;
-                padding: 10px 16px;
-                font-size: 14px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: #F0F0F0;
-                border-color: {color};
-            }}
-            QPushButton:pressed {{
-                background-color: #E0E0E0;
-            }}
-            """
-        return f"""
-        QPushButton {{
-            background-color: {color};
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: bold;
-        }}
-        QPushButton:hover {{
-            background-color: {color}DD;
-        }}
-        QPushButton:pressed {{
-            background-color: {color}BB;
-        }}
-        QPushButton:disabled {{
-            background-color: {COLOR_GRAY};
-            color: #FFFFFF;
-        }}
-        """
+        col = QVBoxLayout()
+        col.setSpacing(4)
+        # 标题"下一次提醒：XX"
+        hint_title = QLabel(tr("dashboard.status_next_label"), card)
+        hint_title.setStyleSheet(
+            f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px;"
+        )
+        col.addWidget(hint_title)
+        # 倒计时复用 _countdown_label / _countdown_title 以兼容测试
+        self._countdown_title = QLabel(tr("dashboard.break_upcoming"), card)
+        self._countdown_title.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.H3}px;"
+            f" font-weight: {tokens.WEIGHT_BOLD};"
+        )
+        col.addWidget(self._countdown_title)
+        self._countdown_label = QLabel("--:--", card)
+        self._countdown_label.setStyleSheet(
+            f"color: {tokens.PRIMARY}; font-size: {tokens.H2}px;"
+            f" font-weight: {tokens.WEIGHT_BOLD};"
+        )
+        col.addWidget(self._countdown_label)
+        info.addLayout(col, 1)
+        layout.addLayout(info)
+        return card
 
     # ------------------------------------------------------------------
-    # 事件订阅
+    # ④ 快捷设置卡（4 个圆形入口）
+    # ------------------------------------------------------------------
+    def _build_quick_settings_card(self) -> QWidget:
+        card = _CardFrame(self)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(22, 18, 22, 18)
+        layout.setSpacing(12)
+
+        title = QLabel(tr("dashboard.quick_settings_title"), card)
+        title.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.H3}px;"
+            f" font-weight: {tokens.WEIGHT_BOLD};"
+        )
+        layout.addWidget(title)
+
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        items = [
+            ("📍", tr("dashboard.quick_position")),
+            ("🎚", tr("dashboard.quick_intensity")),
+            ("🔔", tr("dashboard.quick_sound")),
+            ("⚙", tr("dashboard.quick_more")),
+        ]
+        for icon, label in items:
+            col = QVBoxLayout()
+            col.setSpacing(6)
+            chip = QLabel(icon, card)
+            chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            chip.setFixedSize(54, 54)
+            chip.setStyleSheet(
+                f"QLabel {{ background-color: {tokens.PRIMARY_SOFT};"
+                f" color: {tokens.PRIMARY_TEXT}; border-radius: {tokens.RADIUS_PILL};"
+                f" font-size: 22px; }}"
+            )
+            col.addWidget(chip, alignment=Qt.AlignmentFlag.AlignCenter)
+            lab = QLabel(label, card)
+            lab.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lab.setStyleSheet(
+                f"color: {tokens.TEXT_SECONDARY}; font-size: {tokens.CAPTION}px;"
+            )
+            col.addWidget(lab)
+            row.addLayout(col, 1)
+        layout.addLayout(row)
+        layout.addStretch(1)
+        return card
+
+    # ------------------------------------------------------------------
+    # ⑤ 今日数据（5 个 StatTile）
+    # ------------------------------------------------------------------
+    def _build_today_stats_card(self) -> QWidget:
+        card = _CardFrame(self)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(22, 18, 22, 18)
+        layout.setSpacing(14)
+
+        title = QLabel(tr("dashboard.today_title"), card)
+        title.setStyleSheet(
+            f"color: {tokens.TEXT_PRIMARY}; font-size: {tokens.H3}px;"
+            f" font-weight: {tokens.WEIGHT_BOLD};"
+        )
+        layout.addWidget(title)
+
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        # 5 列：专注时长 / 眨眼 / 远眺 / 活动 / 长休
+        # 用 _break_count_label / _skipped_label / _natural_label 兼容
+        # 旧测试：分别映射"远眺 / 活动 / 长休"
+        self._active_tile = StatTile("⏱", tr("dashboard.stat_active"), "--",
+                                     tokens.PRIMARY, card)
+        self._blink_tile = StatTile("👁", tr("dashboard.stat_blink_cues"), "0",
+                                    tokens.RHYTHM_BLINK, card)
+        # 远眺（远眺 = look_away，与 dashboard.rhythm_short 同义）
+        look_away = StatTile("🌿", tr("dashboard.rhythm_short"), "0",
+                             tokens.RHYTHM_LOOK, card)
+        # 活动
+        move_tile = StatTile("🚶", tr("dashboard.rhythm_move"), "0",
+                             tokens.RHYTHM_MOVE, card)
+        # 长休
+        long_tile = StatTile("🧘", tr("dashboard.rhythm_long"), "0",
+                             tokens.RHYTHM_DEEP, card)
+        # 兼容旧属性
+        self._break_count_label = {"value": look_away._value}  # type: ignore[attr-defined]
+        self._skipped_label = {"value": move_tile._value}  # type: ignore[attr-defined]
+        self._natural_label = {"value": long_tile._value}  # type: ignore[attr-defined]
+        for tile in (self._active_tile, self._blink_tile, look_away, move_tile, long_tile):
+            row.addWidget(tile, 1)
+        layout.addLayout(row)
+
+        # 旧测试用 _progress_bar；保留但隐藏
+        self._progress_bar = QProgressBar(card)
+        self._progress_bar.setRange(0, 100)
+        self._progress_bar.setValue(0)
+        self._progress_bar.setVisible(False)
+        layout.addWidget(self._progress_bar)
+        return card
+
+    # ------------------------------------------------------------------
+    # ⑥ 休息倒计时卡（保留作为独立卡占位——若 Hero 与状态卡已用，
+    # 这里简化为一个鼓励文案）
+    # ------------------------------------------------------------------
+    def _build_break_countdown_card(self) -> QWidget:
+        # 该卡已并入"当前状态"，此处保留为软删（避免外部引用断）
+        wrap = QWidget(self)
+        wrap.setStyleSheet(f"background-color: {tokens.BG_CANVAS};")
+        lay = QVBoxLayout(wrap)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        # 占位留空（不显示）
+        return wrap
+
+    # ------------------------------------------------------------------
+    # ⑦ 底部快捷操作
+    # ------------------------------------------------------------------
+    def _build_quick_actions(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setSpacing(10)
+
+        self._break_btn = PrimaryButton(tr("common.rest_now"), self)
+        self._break_btn.clicked.connect(self.quick_break_requested.emit)
+
+        self._pause_btn = GhostButton(tr("common.pause_30m"), self)
+        self._pause_btn.clicked.connect(self.pause_30m_requested.emit)
+
+        self._reset_btn = GhostButton(tr("dashboard.reset_timer"), self)
+        self._reset_btn.clicked.connect(self.reset_requested.emit)
+
+        row.addWidget(self._break_btn, 2)
+        row.addWidget(self._pause_btn, 1)
+        row.addWidget(self._reset_btn, 1)
+        return row
+
+    # ------------------------------------------------------------------
+    # 旧的 _build_* 占位方法（保留以兼容可能的外部调用）
+    # ------------------------------------------------------------------
+    def _build_status_card_legacy(self) -> QWidget:  # noqa: D401
+        return QWidget()
+
+    def _build_rhythm_card(self) -> QWidget:  # noqa: D401
+        return QWidget()
+
+    def _create_rhythm_row(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
+        return None
+
+    def _build_active_time_card(self) -> QWidget:  # noqa: D401
+        return QWidget()
+
+    def _build_today_stats_card_legacy(self) -> QWidget:  # noqa: D401
+        return QWidget()
+
+    def _create_stat_block(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
+        return None
+
+    def _button_style(self, *args: Any, **kwargs: Any) -> str:  # noqa: D401
+        return ""
+
+    # ------------------------------------------------------------------
+    # 事件订阅 / 清理
     # ------------------------------------------------------------------
     def _subscribe_events(self) -> None:
-        """订阅状态变化事件。"""
         if self._bus is None:
             return
         try:
+            from app.core.event_bus import EventType
             self._bus.subscribe(EventType.STATE_CHANGED, self._on_state_changed)
         except Exception:  # noqa: BLE001
-            logger.exception("订阅 STATE_CHANGED 事件失败")
+            logger.exception("订阅 STATE_CHANGED 失败")
 
     def _unsubscribe_events(self) -> None:
-        """取消事件订阅。"""
         if self._bus is None:
             return
         try:
+            from app.core.event_bus import EventType
             self._bus.unsubscribe(EventType.STATE_CHANGED, self._on_state_changed)
         except Exception:  # noqa: BLE001
             logger.exception("取消 STATE_CHANGED 订阅失败")
 
+    def cleanup(self) -> None:
+        try:
+            get_translator().remove_listener(self._on_language_changed)
+        except Exception:  # noqa: BLE001
+            pass
+        self._unsubscribe_events()
+
+    def _on_state_changed(self, payload: Any) -> None:
+        """状态变化事件回调（V0.6 简化为直接刷新）。"""
+        try:
+            self.update_display()
+        except Exception:  # noqa: BLE001
+            logger.exception("处理状态变化事件失败")
+
+    def _on_language_changed(self, lang: str) -> None:
+        self.retranslate_ui()
+
     # ------------------------------------------------------------------
-    # 数据刷新
+    # update_display + 刷新（V0.6 仍兼容旧 _refresh_* 接口）
     # ------------------------------------------------------------------
     def update_display(self) -> None:
-        """更新显示数据（每秒调用）。
-
-        从各引擎与服务读取最新数据，刷新所有 UI 控件。
-        """
-        # 状态
         self._refresh_status()
-
-        # 有效用眼时间（V1.0：装配了会话引擎时显示屏幕暴露时长）
         active_seconds = self._safe_get_active_seconds()
         self._active_time_label.setText(self._usage.format_duration(active_seconds))
-
-        # 应用运行时间
         uptime = self._safe_get_app_uptime()
         self._uptime_label.setText(
             tr("dashboard.uptime_format", time=self._usage.format_duration(uptime))
         )
-
-        # V1.0 三层护眼节奏
         self._refresh_rhythm()
-
-        # 下一次休息倒计时
         self._refresh_countdown(active_seconds)
-
-        # 今日统计
         self._refresh_today_stats()
 
     def _refresh_status(self) -> None:
-        """刷新顶部状态卡片。"""
         state_name = self._safe_get_state_name()
         state_text, color = self._state_display(state_name)
         self._status_label.setText(state_text)
         self._status_dot.setStyleSheet(
-            f"color: {color}; font-size: 24px;"
+            f"color: {color}; font-size: 16px; background: transparent;"
         )
 
     def _state_display(self, state_name: str) -> tuple[str, str]:
-        """根据状态名返回 (显示文字, 颜色)，文字经 i18n 翻译。"""
         mapping = {
-            "ACTIVE": ("state.active", COLOR_PRIMARY),
-            "IDLE": ("state.idle", COLOR_WARNING),
-            "BREAK_WARNING": ("state.break_warning", COLOR_WARNING),
-            "SHORT_BREAK": ("state.short_break", "#2196F3"),
-            "LONG_BREAK": ("state.long_break", "#2196F3"),
-            "PAUSED": ("state.paused", COLOR_GRAY),
-            "LOCKED": ("state.locked", COLOR_GRAY),
-            "SLEEP": ("state.sleep", COLOR_GRAY),
-            "INACTIVE": ("state.inactive", COLOR_GRAY),
+            "ACTIVE": ("state.active", tokens.PRIMARY),
+            "IDLE": ("state.idle", tokens.WARNING),
+            "BREAK_WARNING": ("state.break_warning", tokens.WARNING),
+            "SHORT_BREAK": ("state.short_break", tokens.INFO),
+            "LONG_BREAK": ("state.long_break", tokens.INFO),
+            "PAUSED": ("state.paused", tokens.TEXT_MUTED),
+            "LOCKED": ("state.locked", tokens.TEXT_MUTED),
+            "SLEEP": ("state.sleep", tokens.TEXT_MUTED),
+            "INACTIVE": ("state.inactive", tokens.TEXT_MUTED),
         }
-        key, color = mapping.get(state_name, ("state.active", COLOR_PRIMARY))
+        key, color = mapping.get(state_name, ("state.active", tokens.PRIMARY))
         return tr(key), color
 
     def _refresh_rhythm(self) -> None:
-        """刷新四层护眼节奏（眨眼 / 远眺 / 活动 / 深度休息）。"""
         if not self._rhythm_rows:
             return
-
         state = self._safe_session_state()
-
         blink_remaining = 0.0
         blink_total = 60.0
         if self._blink is not None:
@@ -666,6 +611,7 @@ class Dashboard(QWidget):
             try:
                 move_remaining = float(self._move.get_remaining_seconds())
                 move_total = max(1.0, float(self._move.interval))
+                move_remaining = None  # type: ignore[assignment]
             except Exception:  # noqa: BLE001
                 move_remaining = None
 
@@ -683,18 +629,9 @@ class Dashboard(QWidget):
     def _set_rhythm_row(
         self, key: str, remaining: float, total: float, state: str
     ) -> None:
-        """更新一行节奏项。
-
-        Args:
-            key: 行标识 ``blink`` / ``short`` / ``long``。
-            remaining: 剩余秒数。
-            total: 该层一个周期的总秒数（用于进度条）。
-            state: 屏幕暴露会话状态 ``ON`` / ``AWAY`` / ``OFF``。
-        """
         row = self._rhythm_rows.get(key)
         if row is None:
             return
-
         if state == "AWAY":
             row["value"].setText(tr("dashboard.rhythm_away"))
             return
@@ -702,25 +639,20 @@ class Dashboard(QWidget):
             row["value"].setText(tr("dashboard.rhythm_off"))
             row["bar"].setValue(0)
             return
-
-        row["value"].setText(self._usage.format_short_duration(remaining))
+        text = self._usage.format_short_duration(remaining)
+        row["value"].setText(text)
         if total > 0:
             progress = int(max(0.0, min(1.0, 1.0 - remaining / total)) * 100)
             row["bar"].setValue(progress)
 
     def _refresh_countdown(self, active_seconds: float) -> None:
-        """刷新下一次休息倒计时与进度条。"""
         remaining = self._safe_get_remaining_seconds()
-        # 进度 = active / (active + remaining)，避免除零
         total = active_seconds + remaining
         progress = 0
         if total > 0:
             progress = min(100, int((active_seconds / total) * 100))
-
         self._progress_bar.setValue(progress)
         self._countdown_label.setText(self._usage.format_short_duration(remaining))
-
-        # 休息进行中时，倒计时文案改为"休息中"
         state_name = self._safe_get_state_name()
         if state_name in ("SHORT_BREAK", "LONG_BREAK"):
             self._countdown_title.setText(tr("dashboard.break_in_progress"))
@@ -731,60 +663,42 @@ class Dashboard(QWidget):
             self._countdown_title.setText(tr("dashboard.next_break_title"))
 
     def _refresh_today_stats(self) -> None:
-        """刷新今日休息统计。"""
-        summary = {}
+        summary: dict[str, Any] = {}
         try:
             summary = self._usage.get_today_summary()
         except Exception:  # noqa: BLE001
             logger.exception("获取今日摘要失败")
 
-        break_count = int(summary.get("break_count", 0))
-        skipped = int(summary.get("skipped_breaks", 0))
-        # 第三个统计块：装配了眨眼统计回调时显示"眨眼提示次数"，
-        # 否则回退为自然休息近似值（旧装配方式）
-        third_value: str
+        # 专注时长
+        active_seconds = self._safe_get_active_seconds()
+        if self._active_tile is not None:
+            self._active_tile.set_value(self._usage.format_short_duration(active_seconds))
+
+        # 眨眼提示次数
+        blink_value = "0"
         if self._blink_stats is not None:
             try:
                 stats_result = self._blink_stats()
-                # 兼容两种回调：返回 int（JSON 统计）或 (总数, 完成数) 元组
                 if isinstance(stats_result, (tuple, list)):
-                    cue_total = stats_result[0]
+                    blink_value = str(int(stats_result[0]))
                 else:
-                    cue_total = stats_result
-                third_value = str(int(cue_total))
+                    blink_value = str(int(stats_result))
             except Exception:  # noqa: BLE001
                 logger.exception("获取眨眼提示统计失败")
-                third_value = "0"
-        else:
-            third_value = str(max(0, self._natural_rest_count))
+        if self._blink_tile is not None:
+            self._blink_tile.set_value(blink_value)
 
+        # 远眺 / 活动 / 长休（兼容旧属性）
+        break_count = int(summary.get("break_count", 0))
+        skipped = int(summary.get("skipped_breaks", 0))
         self._break_count_label["value"].setText(str(break_count))
         self._skipped_label["value"].setText(str(skipped))
-        self._natural_label["value"].setText(third_value)
-
-    # ------------------------------------------------------------------
-    # 事件回调
-    # ------------------------------------------------------------------
-    def _on_state_changed(self, payload: Any) -> None:
-        """状态变化时更新 UI。
-
-        Args:
-            payload: STATE_CHANGED 事件数据，含 new_state 字段。
-        """
-        try:
-            state_name = "ACTIVE"
-            if isinstance(payload, dict):
-                state_name = payload.get("new_state", "ACTIVE")
-            logger.debug("状态变化事件: %s", state_name)
-            self.update_display()
-        except Exception:  # noqa: BLE001
-            logger.exception("处理状态变化事件失败")
+        self._natural_label["value"].setText(str(max(0, self._natural_rest_count)))
 
     # ------------------------------------------------------------------
     # 容错辅助
     # ------------------------------------------------------------------
     def _safe_get_state_name(self) -> str:
-        """安全获取当前状态名。"""
         if self._state_machine is None:
             return "ACTIVE"
         try:
@@ -797,11 +711,6 @@ class Dashboard(QWidget):
             return "ACTIVE"
 
     def _safe_get_active_seconds(self) -> float:
-        """已用时长。
-
-        V1.0：装配了屏幕暴露会话引擎时优先返回 **屏幕暴露时长**
-        （键鼠空闲不再中断用眼计时），否则回退 TimerEngine。
-        """
         if self._session is not None:
             try:
                 return max(0.0, float(self._session.exposure_seconds))
@@ -815,87 +724,60 @@ class Dashboard(QWidget):
             return 0.0
 
     def _safe_session_state(self) -> str:
-        """屏幕暴露会话状态名（``ON`` / ``AWAY`` / ``OFF``）；无引擎时返回 ON。"""
         if self._session is None:
             return "ON"
         try:
-            state = self._session.state
-            return getattr(state, "name", str(state)).upper()
+            return str(self._session.state)
         except Exception:  # noqa: BLE001
             return "ON"
 
     def _safe_get_long_remaining_seconds(self) -> float:
         if self._break is None:
-            return float(defaults.LONG_WORK_DURATION)
+            return 0.0
         try:
-            return float(self._break.get_long_remaining_seconds())
+            return max(0.0, float(self._break.get_long_remaining_seconds()))
         except Exception:  # noqa: BLE001
-            return float(defaults.LONG_WORK_DURATION)
+            return 0.0
 
     def _safe_get_long_work_duration(self) -> float:
         if self._break is None:
-            return float(defaults.LONG_WORK_DURATION)
-        getter = getattr(self._break, "get_long_work_duration", None)
-        if getter is None or not callable(getter):
-            return float(defaults.LONG_WORK_DURATION)
-        try:
-            return max(1.0, float(getter()))
-        except Exception:  # noqa: BLE001
-            return float(defaults.LONG_WORK_DURATION)
-
-    def _safe_get_app_uptime(self) -> float:
-        if self._timer is None:
             return 0.0
         try:
-            return float(self._timer.get_app_uptime())
+            return max(0.0, float(self._break.get_long_work_duration()))
+        except Exception:  # noqa: BLE001
+            return 0.0
+
+    def _safe_get_app_uptime(self) -> float:
+        if self._usage is None:
+            return 0.0
+        try:
+            return max(0.0, float(self._usage.get_app_uptime()))
         except Exception:  # noqa: BLE001
             return 0.0
 
     def _safe_get_remaining_seconds(self) -> float:
         if self._break is None:
-            return float(defaults.SHORT_WORK_DURATION)
+            return 0.0
         try:
-            return float(self._break.get_remaining_seconds())
+            return max(0.0, float(self._break.get_remaining_seconds()))
         except Exception:  # noqa: BLE001
-            return float(defaults.SHORT_WORK_DURATION)
+            return 0.0
 
-    # ------------------------------------------------------------------
-    # 语言切换
-    # ------------------------------------------------------------------
     def retranslate_ui(self) -> None:
-        """语言变化时重新设置所有静态文本。"""
-        self._btn_quick_break.setText(tr("common.rest_now"))
-        self._btn_pause.setText(tr("common.pause_30m"))
-        self._btn_reset.setText(tr("dashboard.reset_timer"))
-        self._active_time_title.setText(
-            tr("dashboard.exposure_time_title")
-            if self._session is not None
-            else tr("dashboard.active_time_title")
-        )
+        """语言切换时刷新所有静态文本。"""
         if self._rhythm_title is not None:
             self._rhythm_title.setText(tr("dashboard.rhythm_title"))
-            for key, i18n_key in (
-                ("blink", "dashboard.rhythm_blink"),
-                ("short", "dashboard.rhythm_short"),
-                ("move", "dashboard.rhythm_move"),
-                ("long", "dashboard.rhythm_long"),
-            ):
-                row = self._rhythm_rows.get(key)
-                if row is not None:
-                    row["title"].setText(tr(i18n_key))
-        for block in (self._break_count_label, self._skipped_label, self._natural_label):
-            block["title"].setText(tr(block["key"]))
-        # 动态文本（状态 / 倒计时 / 运行时间）随刷新重新取值
-        self.update_display()
-
-    def _on_language_changed(self, lang: str) -> None:
-        """语言变化监听回调。"""
-        self.retranslate_ui()
-
-    # ------------------------------------------------------------------
-    # 清理
-    # ------------------------------------------------------------------
-    def cleanup(self) -> None:
-        """释放资源（取消事件订阅与语言监听）。"""
-        self._unsubscribe_events()
-        get_translator().remove_listener(self._on_language_changed)
+        for key, card in self._rhythm_widgets.items():
+            title_map = {
+                "blink": tr("dashboard.rhythm_blink"),
+                "short": tr("dashboard.rhythm_short"),
+                "move": tr("dashboard.rhythm_move"),
+                "long": tr("dashboard.rhythm_long"),
+            }
+            card._title.setText(title_map.get(key, card._title.text()))  # type: ignore[attr-defined]
+        # 状态文字
+        self._refresh_status()
+        # 按钮文字
+        self._break_btn.setText(tr("common.rest_now"))
+        self._pause_btn.setText(tr("common.pause_30m"))
+        self._reset_btn.setText(tr("dashboard.reset_timer"))

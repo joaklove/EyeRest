@@ -444,10 +444,10 @@ class TestMainWindowIntegration(unittest.TestCase):
         self.assertTrue(self.window._refresh_timer.isActive())
 
     def test_statusbar_reflects_state(self) -> None:
-        """状态栏显示当前状态。"""
+        """Sidebar 状态徽章显示当前状态（V0.6 取代原 status bar）。"""
         self.state_machine.start_protection()
-        self.window._refresh_statusbar()
-        text = self.window._status_label.text()
+        self.window._refresh_status_badge()
+        text = self.window._status_badge.text()
         self.assertIn("ACTIVE", text)
 
     def test_quick_break_action(self) -> None:
