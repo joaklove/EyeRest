@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import tokens
+from . import assets, tokens
 
 
 def rgba(hex_color: str, alpha: float) -> str:
@@ -149,14 +149,15 @@ class StatTile(QFrame):
         value: str = "--",
         accent: str = tokens.PRIMARY,
         parent: Optional[QWidget] = None,
+        icon_asset: Optional[str] = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("StatTile")
         self._accent = accent
-        self._build(icon, label)
+        self._build(icon, label, icon_asset)
         self.set_value(value)
 
-    def _build(self, icon: str, label: str) -> None:
+    def _build(self, icon: str, label: str, icon_asset: Optional[str] = None) -> None:
         self.setStyleSheet(
             f"QFrame#StatTile {{"
             f"  background-color: {tokens.BG_SURFACE};"
@@ -169,7 +170,7 @@ class StatTile(QFrame):
         layout.setSpacing(6)
         layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
-        # 彩色圆底图标
+        # 彩色圆底图标（有插画资产用插画，否则回退 emoji 文字）
         self._icon = QLabel(icon, self)
         self._icon.setFixedSize(36, 36)
         self._icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -177,6 +178,9 @@ class StatTile(QFrame):
             f"QLabel {{ background-color: {rgba(self._accent, 0.14)};"
             f" border-radius: 18px; font-size: 16px; }}"
         )
+        if icon_asset and assets.has(icon_asset):
+            self._icon.setText("")
+            self._icon.setPixmap(assets.pixmap(icon_asset, 24))
         layout.addWidget(self._icon, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         # 数值
@@ -212,6 +216,7 @@ class RhythmCard(QFrame):
         title: str,
         accent: str = tokens.PRIMARY,
         parent: Optional[QWidget] = None,
+        icon_asset: Optional[str] = None,
     ) -> None:
         super().__init__(parent)
         self._accent = accent
@@ -237,6 +242,9 @@ class RhythmCard(QFrame):
             f"QLabel {{ background-color: {rgba(accent, 0.14)};"
             f" border-radius: 17px; font-size: 15px; }}"
         )
+        if icon_asset and assets.has(icon_asset):
+            self._icon.setText("")
+            self._icon.setPixmap(assets.pixmap(icon_asset, 24))
         top.addWidget(self._icon)
         self._title = QLabel(title, self)
         self._title.setStyleSheet(

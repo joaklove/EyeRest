@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- Sidebar Logo：极简眼睛标记（放在浅色圆底徽章上） -->
+  <path d="M6,24 Q24,7 42,24 Q24,38 6,24 Z"
+        fill="#FFFFFF" stroke="#1F7A6C" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="24" cy="23" r="8" fill="#4CCAB8"/>
+  <circle cx="24" cy="23" r="3.6" fill="#24313F"/>
+  <circle cx="21.4" cy="20.4" r="1.9" fill="#FFFFFF"/>
+</svg>

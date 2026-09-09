@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Hero 主插画：暖色圆底 + 明亮大眼睛 -->
+  <circle cx="100" cy="100" r="92" fill="#FFF7EC"/>
+  <circle cx="100" cy="100" r="92" fill="none" stroke="#FFE8CC" stroke-width="3"/>
+  <!-- 睫毛 -->
+  <g stroke="#2D3748" stroke-width="5" stroke-linecap="round">
+    <line x1="100" y1="46" x2="100" y2="34"/>
+    <line x1="64" y1="58" x2="57" y2="48"/>
+    <line x1="136" y1="58" x2="143" y2="48"/>
+    <line x1="38" y1="84" x2="27" y2="79"/>
+    <line x1="162" y1="84" x2="173" y2="79"/>
+  </g>
+  <!-- 眼眶 -->
+  <path d="M28,108 Q100,42 172,108 Q100,158 28,108 Z"
+        fill="#FFFFFF" stroke="#2D3748" stroke-width="6" stroke-linejoin="round"/>
+  <clipPath id="eyeClip">
+    <path d="M28,108 Q100,42 172,108 Q100,158 28,108 Z"/>
+  </clipPath>
+  <g clip-path="url(#eyeClip)">
+    <!-- 虹膜 -->
+    <circle cx="100" cy="102" r="32" fill="#4CCAB8"/>
+    <circle cx="100" cy="102" r="32" fill="none" stroke="#35AE9B" stroke-width="3"/>
+    <circle cx="100" cy="102" r="14" fill="#24313F"/>
+    <!-- 高光 -->
+    <circle cx="89" cy="90" r="7" fill="#FFFFFF"/>
+    <circle cx="113" cy="114" r="3.5" fill="#FFFFFF" opacity="0.75"/>
+  </g>
+  <!-- 腮红 -->
+  <ellipse cx="46" cy="136" rx="10" ry="5" fill="#FFD9AB" opacity="0.9"/>
+  <ellipse cx="154" cy="136" rx="10" ry="5" fill="#FFD9AB" opacity="0.9"/>
+</svg>

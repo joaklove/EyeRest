@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -37,7 +37,7 @@ from app.i18n import get_translator, tr
 from app.ui.dashboard import Dashboard
 from app.ui.settings import SettingsPage
 from app.ui.statistics import StatisticsPage
-from app.ui.theme import tokens
+from app.ui.theme import assets, tokens
 from app.ui.theme.styles_qss import GLOBAL_QSS
 from app.utils.logger import get_logger
 
@@ -49,11 +49,11 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 _NAV_ITEMS = [
-    # (i18n key, icon, page index)
-    ("nav.dashboard", "🏠", 0),
-    ("nav.settings", "⚙", 2),   # 顺序：首页→设置→统计→关于
-    ("nav.statistics", "📊", 1),
-    ("nav.about", "ℹ", 3),
+    # (i18n key, 插画资产名, page index)
+    ("nav.dashboard", "nav_home", 0),
+    ("nav.settings", "nav_settings", 2),   # 顺序：首页→设置→统计→关于
+    ("nav.statistics", "nav_stats", 1),
+    ("nav.about", "nav_about", 3),
 ]
 
 
@@ -78,10 +78,13 @@ class _SidebarButton(QPushButton):
     """
 
     def __init__(self, text: str, icon: str, parent: Optional[QWidget] = None) -> None:
-        super().__init__(f"  {icon}   {text}", parent)
+        super().__init__(f"  {text}", parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setCheckable(True)
         self.setMinimumHeight(40)
+        if assets.has(icon):
+            self.setIcon(assets.icon(icon, 18))
+            self.setIconSize(QSize(18, 18))
         self._apply(False)
 
     def _apply(self, active: bool) -> None:
@@ -314,16 +317,19 @@ class MainWindow(QMainWindow):
         logo_row = QHBoxLayout()
         logo_row.setContentsMargins(22, 0, 22, 0)
         logo_row.setSpacing(10)
-        logo_badge = QLabel("👁", sidebar)
+        logo_badge = QLabel(sidebar)
         logo_badge.setFixedSize(36, 36)
         logo_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_badge.setStyleSheet(
             f"QLabel {{"
             f"  background-color: {tokens.PRIMARY};"
             f"  border-radius: 18px;"
-            f"  font-size: 18px;"
             f"}}"
         )
+        if assets.has("logo_eye"):
+            logo_badge.setPixmap(assets.pixmap("logo_eye", 26))
+        else:
+            logo_badge.setText("👁")
         logo_row.addWidget(logo_badge)
         logo_col = QVBoxLayout()
         logo_col.setSpacing(1)

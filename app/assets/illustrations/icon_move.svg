@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- 活动：行走小人（深桃） -->
+  <circle cx="28" cy="9" r="5" fill="#F4B570"/>
+  <g stroke="#E89B4E" stroke-width="3.6" stroke-linecap="round" fill="none">
+    <path d="M27,16 L24,27 L17,36"/>
+    <path d="M24,27 L32,32 L33,41"/>
+    <path d="M26,19 L35,24 L41,22"/>
+    <path d="M26,20 L18,24 L13,30"/>
+  </g>
+  <circle cx="8" cy="42" r="2.2" fill="#FFD9AB"/>
+  <circle cx="43" cy="38" r="2" fill="#4CCAB8"/>
+</svg>

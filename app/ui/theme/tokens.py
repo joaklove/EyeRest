@@ -79,6 +79,10 @@ SHADOW_FOCUS = "0 0 0 3px rgba(76, 202, 184, 0.25)"
 
 FONT_FAMILY = '"Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif'
 
+# 品牌展示字体（圆体）。由 theme/fonts.load_fonts() 启动时注入真实 family 名，
+# 加载失败保持 None（回退 FONT_FAMILY）。
+FONT_DISPLAY: str | None = None
+
 DISPLAY = 32   # 大数字（屏幕暴露时长）
 H1 = 22        # 页面标题
 H2 = 18        # 区块标题

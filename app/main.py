@@ -63,6 +63,11 @@ def main() -> int:
     app.setApplicationVersion(defaults.APP_VERSION)
     app.setOrganizationName(defaults.APP_NAME)
 
+    # 品牌字体（圆体）须在任何窗口创建前加载
+    from app.ui.theme.fonts import load_fonts
+
+    load_fonts()
+
     # 关键：关闭所有窗口时不退出应用（主窗口关闭只是隐藏到托盘）
     # 只有托盘"退出"菜单才真正退出
     app.setQuitOnLastWindowClosed(False)

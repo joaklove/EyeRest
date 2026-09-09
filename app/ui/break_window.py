@@ -233,10 +233,12 @@ class BreakWindow(QWidget):
         card_layout.setContentsMargins(48, 40, 48, 32)
         card_layout.setSpacing(16)
 
-        # 顶部眼睛图标
-        eye_icon = QLabel("👁️", card)
+        # 顶部眼睛插画（与主界面同一套品牌资产）
+        eye_icon = QLabel(card)
         eye_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        eye_icon.setStyleSheet("font-size: 48px; background: transparent;")
+        from app.ui.theme import assets as _assets
+
+        eye_icon.setPixmap(_assets.pixmap("hero_eye", 64))
         card_layout.addWidget(eye_icon)
 
         # 标题

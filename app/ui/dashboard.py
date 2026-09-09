@@ -51,12 +51,23 @@ from app.ui.theme import (
     SectionTitle,
     SoftCard,
     StatTile,
+    assets,
     tokens,
 )
 from app.ui.theme.components import rgba
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _display_font(point_size: int) -> QFont:
+    """品牌展示字体（圆体）；未加载成功时回退系统字体。"""
+    font = QFont()
+    if tokens.FONT_DISPLAY:
+        font.setFamily(tokens.FONT_DISPLAY)
+    font.setPointSize(point_size)
+    font.setWeight(tokens.WEIGHT_BOLD)
+    return font
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +121,12 @@ class _QuickTile(QFrame):
 
     clicked = Signal()
 
-    def __init__(self, icon: str, label: str, parent: Optional[QWidget] = None) -> None:
+    def __init__(
+        self,
+        label: str,
+        parent: Optional[QWidget] = None,
+        icon_asset: Optional[str] = None,
+    ) -> None:
         super().__init__(parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(
@@ -120,13 +136,17 @@ class _QuickTile(QFrame):
         col = QVBoxLayout(self)
         col.setContentsMargins(2, 6, 2, 6)
         col.setSpacing(6)
-        chip = QLabel(icon, self)
+        chip = QLabel(self)
         chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
         chip.setFixedSize(46, 46)
         chip.setStyleSheet(
-            f"QLabel {{ background-color: {rgba(tokens.PRIMARY, 0.12)};"
-            f" border-radius: 23px; font-size: 20px; }}"
+            f"QLabel {{ background-color: {rgba(tokens.PRIMARY_SOFT, 0.9)};"
+            f" border-radius: 23px; }}"
         )
+        if icon_asset and assets.has(icon_asset):
+            chip.setPixmap(assets.pixmap(icon_asset, 30))
+        else:
+            chip.setText("•")
         col.addWidget(chip, alignment=Qt.AlignmentFlag.AlignCenter)
         self._label = QLabel(label, self)
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -301,13 +321,14 @@ class Dashboard(QWidget):
         )
         text_col.addWidget(self._hero_greeting)
         self._hero_wish = QLabel(tr("dashboard.hero_wish"), card)
-        font = QFont()
-        font.setPointSize(tokens.H1)
-        font.setWeight(tokens.WEIGHT_BOLD)
-        self._hero_wish.setFont(font)
+        display_family = tokens.FONT_DISPLAY or "Microsoft YaHei UI"
+        # 注意：全局 QSS 的 * { font-family } 会覆盖 setFont，
+        # 品牌字体必须在样式表里显式声明
         self._hero_wish.setStyleSheet(
             f"color: {tokens.TEXT_PRIMARY}; background: transparent;"
+            f" font-family: '{display_family}';"
         )
+        self._hero_wish.setFont(_display_font(tokens.H1 + 2))
         text_col.addWidget(self._hero_wish)
 
         # 专注时长（保留 _active_time_label 供测试/数据流使用，收进胶囊行）
@@ -342,14 +363,10 @@ class Dashboard(QWidget):
         )
         tip.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
         right.addWidget(tip)
-        eye_wrap = QLabel("👁", card)
-        eye_wrap.setFixedSize(72, 72)
+        eye_wrap = QLabel(card)
+        eye_wrap.setFixedSize(84, 84)
         eye_wrap.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        eye_wrap.setStyleSheet(
-            f"QLabel {{ background-color: {rgba('#FFFFFF', 0.75)};"
-            f" border-radius: 36px; font-size: 34px;"
-            f" border: 1px solid {tokens.BORDER_SOFT}; }}"
-        )
+        eye_wrap.setPixmap(assets.pixmap("hero_eye", 84))
         right.addWidget(eye_wrap, alignment=Qt.AlignmentFlag.AlignHCenter)
         right.addStretch(1)
         layout.addLayout(right)
@@ -379,14 +396,15 @@ class Dashboard(QWidget):
         row = QHBoxLayout()
         row.setSpacing(10)
         items = [
-            ("blink", "👁", tr("dashboard.rhythm_blink"), tokens.RHYTHM_BLINK),
-            ("short", "🌿", tr("dashboard.rhythm_short"), tokens.RHYTHM_LOOK),
-            ("move", "🚶", tr("dashboard.rhythm_move"), tokens.RHYTHM_MOVE),
-            ("long", "🧘", tr("dashboard.rhythm_long"), tokens.RHYTHM_DEEP),
+            ("blink", "👁", tr("dashboard.rhythm_blink"), tokens.RHYTHM_BLINK, "icon_blink"),
+            ("short", "🌿", tr("dashboard.rhythm_short"), tokens.RHYTHM_LOOK, "icon_lookaway"),
+            ("move", "🚶", tr("dashboard.rhythm_move"), tokens.RHYTHM_MOVE, "icon_move"),
+            ("long", "🧘", tr("dashboard.rhythm_long"), tokens.RHYTHM_DEEP, "icon_deep"),
         ]
         self._rhythm_widgets: dict[str, RhythmCard] = {}
-        for key, icon, title_text, accent in items:
-            card = RhythmCard(icon=icon, title=title_text, accent=accent, parent=wrap)
+        for key, icon, title_text, accent, asset in items:
+            card = RhythmCard(icon=icon, title=title_text, accent=accent,
+                              parent=wrap, icon_asset=asset)
             # 隐藏原本的进度文本（用 rhythm_rows[].bar 维护进度）
             row.addWidget(card, 1)
             self._rhythm_widgets[key] = card
@@ -427,13 +445,13 @@ class Dashboard(QWidget):
         )
         layout.addWidget(title)
 
-        # 状态图标 + 提示
+        # 状态图标（暖色小熊猫插画）+ 提示
         info = QHBoxLayout()
         info.setSpacing(14)
-        icon = QLabel("🐼", card)
-        icon.setStyleSheet(
-            f"color: {tokens.ACCENT_DEEP}; font-size: 48px; background: transparent;"
-        )
+        icon = QLabel(card)
+        icon.setPixmap(assets.pixmap("mascot_rest", 68))
+        icon.setFixedSize(72, 72)
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         info.addWidget(icon)
 
         col = QVBoxLayout()
@@ -480,14 +498,14 @@ class Dashboard(QWidget):
         row = QHBoxLayout()
         row.setSpacing(10)
         items = [
-            ("📍", tr("dashboard.quick_position"), "position"),
-            ("🎚", tr("dashboard.quick_intensity"), "intensity"),
-            ("🔔", tr("dashboard.quick_sound"), "sound"),
-            ("⚙", tr("dashboard.quick_more"), "more"),
+            (tr("dashboard.quick_position"), "position", "icon_position"),
+            (tr("dashboard.quick_intensity"), "intensity", "icon_intensity"),
+            (tr("dashboard.quick_sound"), "sound", "icon_sound"),
+            (tr("dashboard.quick_more"), "more", "icon_more"),
         ]
         self._quick_tiles: dict[str, _QuickTile] = {}
-        for icon, label, key in items:
-            tile = _QuickTile(icon, label, card)
+        for label, key, asset in items:
+            tile = _QuickTile(label, card, icon_asset=asset)
             tile.clicked.connect(self.open_settings_requested.emit)
             row.addWidget(tile, 1)
             self._quick_tiles[key] = tile
@@ -571,18 +589,18 @@ class Dashboard(QWidget):
         # 用 _break_count_label / _skipped_label / _natural_label 兼容
         # 旧测试：分别映射"远眺 / 活动 / 长休"
         self._active_tile = StatTile("⏱", tr("dashboard.stat_active"), "--",
-                                     tokens.PRIMARY, card)
+                                     tokens.RHYTHM_MOVE, card, icon_asset="icon_clock")
         self._blink_tile = StatTile("👁", tr("dashboard.stat_blink_cues"), "0",
-                                    tokens.RHYTHM_BLINK, card)
+                                    tokens.RHYTHM_BLINK, card, icon_asset="icon_blink")
         # 远眺（远眺 = look_away，与 dashboard.rhythm_short 同义）
         look_away = StatTile("🌿", tr("dashboard.rhythm_short"), "0",
-                             tokens.RHYTHM_LOOK, card)
+                             tokens.RHYTHM_LOOK, card, icon_asset="icon_lookaway")
         # 活动
         move_tile = StatTile("🚶", tr("dashboard.rhythm_move"), "0",
-                             tokens.RHYTHM_MOVE, card)
+                             tokens.RHYTHM_MOVE, card, icon_asset="icon_move")
         # 长休
         long_tile = StatTile("🧘", tr("dashboard.rhythm_long"), "0",
-                             tokens.RHYTHM_DEEP, card)
+                             tokens.RHYTHM_DEEP, card, icon_asset="icon_deep")
         # 兼容旧属性
         self._break_count_label = {"value": look_away._value}  # type: ignore[attr-defined]
         self._skipped_label = {"value": move_tile._value}  # type: ignore[attr-defined]
@@ -629,8 +647,10 @@ class Dashboard(QWidget):
         layout.setContentsMargins(22, 18, 22, 18)
         layout.setSpacing(6)
 
-        leaf = QLabel("🌿", card)
-        leaf.setStyleSheet("font-size: 22px; background: transparent;")
+        leaf = QLabel(card)
+        leaf.setPixmap(assets.pixmap("plant", 40))
+        leaf.setFixedSize(44, 44)
+        leaf.setScaledContents(False)
         layout.addWidget(leaf)
         layout.addStretch(1)
 

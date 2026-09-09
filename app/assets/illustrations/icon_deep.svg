@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- 深度休息：月亮 + 星星（淡紫） -->
+  <path d="M30,6 A16,16 0 1,0 42,26 A13,13 0 0,1 30,6 Z"
+        fill="#B59CE0" stroke="#9A7ECF" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M10,12 l1.6,3.4 3.4,1.6 -3.4,1.6 -1.6,3.4 -1.6,-3.4 -3.4,-1.6 3.4,-1.6 Z" fill="#FFD9AB"/>
+  <circle cx="16" cy="36" r="2.2" fill="#D9C9F2"/>
+  <circle cx="8" cy="26" r="1.6" fill="#D9C9F2"/>
+</svg>

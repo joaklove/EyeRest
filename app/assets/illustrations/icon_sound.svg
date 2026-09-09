@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- 提示音：温暖铃铛 -->
+  <path d="M24,6 C17,6 12,11.5 12,19 L12,27 L8,33 L40,33 L36,27 L36,19 C36,11.5 31,6 24,6 Z"
+        fill="#FFD9AB" stroke="#E8A94E" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M19,36 A5,5 0 0,0 29,36 Z" fill="#E8A94E"/>
+  <circle cx="24" cy="5" r="3" fill="#E8A94E"/>
+  <path d="M31,14 A8,8 0 0,1 33,19" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

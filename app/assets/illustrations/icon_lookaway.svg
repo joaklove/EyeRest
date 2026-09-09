@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- 远眺：眼睛望向远方 + 太阳（信息蓝） -->
+  <circle cx="35" cy="12" r="5" fill="#FFD9AB"/>
+  <g stroke="#F4B570" stroke-width="2" stroke-linecap="round">
+    <line x1="35" y1="3.5" x2="35" y2="5.5"/>
+    <line x1="43.5" y1="12" x2="45.5" y2="12"/>
+    <line x1="41" y1="6" x2="42.4" y2="4.6"/>
+  </g>
+  <path d="M5,27 Q20,13 35,27 Q20,38 5,27 Z"
+        fill="#FFFFFF" stroke="#5BA8D6" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="26" cy="25" r="6" fill="#5BA8D6"/>
+  <circle cx="24" cy="23" r="2" fill="#FFFFFF"/>
+  <!-- 远山 -->
+  <path d="M6,42 L14,32 L20,40 L26,33 L34,42 Z" fill="#A8CDEB"/>
+</svg>

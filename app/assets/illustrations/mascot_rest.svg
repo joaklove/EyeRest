@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- 状态卡小角色：熊猫（暖色圆底） -->
+  <circle cx="60" cy="60" r="54" fill="#E6F7F4"/>
+  <!-- 耳朵 -->
+  <circle cx="30" cy="26" r="14" fill="#2D3748"/>
+  <circle cx="90" cy="26" r="14" fill="#2D3748"/>
+  <circle cx="30" cy="26" r="6" fill="#4A5568"/>
+  <circle cx="90" cy="26" r="6" fill="#4A5568"/>
+  <!-- 脸 -->
+  <ellipse cx="60" cy="62" rx="38" ry="34" fill="#FFFFFF" stroke="#2D3748" stroke-width="3"/>
+  <!-- 眼斑（眯眼愉悦） -->
+  <ellipse cx="42" cy="56" rx="9" ry="11" fill="#2D3748" transform="rotate(-12 42 56)"/>
+  <ellipse cx="78" cy="56" rx="9" ry="11" fill="#2D3748" transform="rotate(12 78 56)"/>
+  <path d="M38,56 Q42,52 46,56" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M74,56 Q78,52 82,56" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- 鼻子和嘴 -->
+  <ellipse cx="60" cy="70" rx="4" ry="3" fill="#2D3748"/>
+  <path d="M54,78 Q60,83 66,78" fill="none" stroke="#2D3748" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- 腮红 -->
+  <ellipse cx="30" cy="70" rx="6" ry="3.4" fill="#FFD9AB"/>
+  <ellipse cx="90" cy="70" rx="6" ry="3.4" fill="#FFD9AB"/>
+</svg>
