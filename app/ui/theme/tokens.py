@@ -24,7 +24,7 @@ BG_RAISED = "#FFFFFF"           # 悬浮态
 # 边框
 BORDER = "#EAE0D2"              # 暖灰边框
 BORDER_SOFT = "#F1E8D9"         # 极淡边框
-BORDER_FOCUS = "#4CCAB8"        # 聚焦边框（主色）
+BORDER_FOCUS = "#26AE89"        # 聚焦边框（主色）
 
 # 文字
 TEXT_PRIMARY = "#2D3748"        # 主文字（深灰）
@@ -34,11 +34,14 @@ TEXT_DISABLED = "#CBD5E0"       # 禁用文字
 TEXT_INVERTED = "#FFFFFF"       # 按钮/强调块上的反白文字
 
 # 主色（自然绿）
-PRIMARY = "#4CCAB8"             # 主色
-PRIMARY_HOVER = "#3DB5A4"       # 悬浮态
-PRIMARY_PRESSED = "#33A192"     # 按下态
-PRIMARY_SOFT = "#E6F7F4"        # 极淡主色（卡片背景/Toggle 关闭轨）
-PRIMARY_TEXT = "#1F7A6C"        # 主色上文字（深绿）
+# V0.6.3 校准：对齐展示板「配色方案·主色」实画值 #26AE89（H163.7 S78.2 V68.2）。
+# 旧值 #4CCAB8 偏青 7.7°、偏淡 15.8pt、偏亮 11pt，观感是"薄荷青"而非"植物绿"。
+# 采样方法与证据见 docs/design/README.md「取色实测 v2」。
+PRIMARY = "#26AE89"             # 主色
+PRIMARY_HOVER = "#1FA37E"       # 悬浮态
+PRIMARY_PRESSED = "#17906E"     # 按下态
+PRIMARY_SOFT = "#DDF5EE"        # 极淡主色（卡片背景/Toggle 关闭轨）
+PRIMARY_TEXT = "#1F7A61"        # 主色上文字（深绿）
 
 # 辅色（信息蓝——用于远眺/数据点）
 INFO = "#5BA8D6"                # 蓝
@@ -54,10 +57,10 @@ WARNING = "#E8B86D"             # 暖橙
 WARNING_SOFT = "#FCF1DC"
 DANGER = "#E57D7D"              # 暖红
 DANGER_SOFT = "#FBE7E7"
-SUCCESS = "#4CCAB8"             # 同主色
+SUCCESS = "#26AE89"             # 同主色
 
 # 节奏卡片四类（与四层节奏对应）
-RHYTHM_BLINK = "#4CCAB8"        # 眨眼——主色
+RHYTHM_BLINK = "#26AE89"        # 眨眼——主色
 RHYTHM_LOOK = "#5BA8D6"         # 远眺——信息蓝
 RHYTHM_MOVE = "#F4B570"         # 活动——深桃
 RHYTHM_DEEP = "#B59CE0"         # 长休——淡紫
@@ -66,12 +69,12 @@ RHYTHM_DEEP = "#B59CE0"         # 长休——淡紫
 SIDEBAR_BG = "#F4ECDF"          # 侧边栏暖色底（比主背景略深）
 SIDEBAR_ITEM_HOVER = "#EDE0CD"  # 侧边栏项 hover
 SIDEBAR_ITEM_ACTIVE_BG = "#FFFFFF"  # 当前页：纯白底
-SIDEBAR_ITEM_ACTIVE_TEXT = "#1F7A6C"  # 当前页文字：深绿
+SIDEBAR_ITEM_ACTIVE_TEXT = "#1F7A61"  # 当前页文字：深绿
 
 # 阴影（半透明黑色，柔和）
 SHADOW_CARD = "0 2px 8px rgba(45, 55, 72, 0.06)"
 SHADOW_RAISED = "0 4px 16px rgba(45, 55, 72, 0.10)"
-SHADOW_FOCUS = "0 0 0 3px rgba(76, 202, 184, 0.25)"
+SHADOW_FOCUS = "0 0 0 3px rgba(38, 174, 137, 0.25)"
 
 # ----------------------------------------------------------------------
 # 字体（Typography）

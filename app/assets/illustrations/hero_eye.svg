@@ -18,8 +18,8 @@
   </clipPath>
   <g clip-path="url(#eyeClip)">
     <!-- 虹膜 -->
-    <circle cx="100" cy="102" r="32" fill="#4CCAB8"/>
-    <circle cx="100" cy="102" r="32" fill="none" stroke="#35AE9B" stroke-width="3"/>
+    <circle cx="100" cy="102" r="32" fill="#26ae89"/>
+    <circle cx="100" cy="102" r="32" fill="none" stroke="#30ad8b" stroke-width="3"/>
     <circle cx="100" cy="102" r="14" fill="#24313F"/>
     <!-- 高光 -->
     <circle cx="89" cy="90" r="7" fill="#FFFFFF"/>

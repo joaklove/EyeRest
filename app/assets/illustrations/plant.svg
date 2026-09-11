@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
   <!-- 植物小枝：引言卡 / Hero 角落装饰 -->
   <g stroke-linecap="round">
-    <path d="M28,104 C40,78 52,58 84,24" fill="none" stroke="#3DB5A4" stroke-width="4"/>
+    <path d="M28,104 C40,78 52,58 84,24" fill="none" stroke="#1fa37e" stroke-width="4"/>
     <!-- 叶片（左） -->
-    <path d="M56,62 C44,58 38,48 38,38 C50,40 58,48 60,58 Z" fill="#4CCAB8"/>
-    <path d="M40,84 C28,80 22,70 22,60 C34,62 42,70 44,80 Z" fill="#7FDCCB"/>
+    <path d="M56,62 C44,58 38,48 38,38 C50,40 58,48 60,58 Z" fill="#26ae89"/>
+    <path d="M40,84 C28,80 22,70 22,60 C34,62 42,70 44,80 Z" fill="#7fdbc2"/>
     <!-- 叶片（右） -->
-    <path d="M66,46 C68,34 76,26 88,24 C88,36 80,46 70,50 Z" fill="#4CCAB8"/>
-    <path d="M52,74 C54,62 62,54 74,52 C74,64 66,74 56,78 Z" fill="#7FDCCB"/>
+    <path d="M66,46 C68,34 76,26 88,24 C88,36 80,46 70,50 Z" fill="#26ae89"/>
+    <path d="M52,74 C54,62 62,54 74,52 C74,64 66,74 56,78 Z" fill="#7fdbc2"/>
     <!-- 暖桃小花 -->
     <circle cx="88" cy="22" r="7" fill="#FFD9AB"/>
     <circle cx="88" cy="22" r="2.6" fill="#F4B570"/>

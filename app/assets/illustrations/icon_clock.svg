@@ -6,5 +6,5 @@
     <line x1="24" y1="25" x2="31" y2="29"/>
   </g>
   <circle cx="24" cy="25" r="2.2" fill="#E89B4E"/>
-  <line x1="36" y1="8" x2="40" y2="12" stroke="#4CCAB8" stroke-width="2.6" stroke-linecap="round"/>
+  <line x1="36" y1="8" x2="40" y2="12" stroke="#26ae89" stroke-width="2.6" stroke-linecap="round"/>
 </svg>
