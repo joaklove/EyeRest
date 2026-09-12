@@ -201,6 +201,25 @@ color/rhythm/move     →  color/accent/deep
 ./.venv/Scripts/python.exe tools/figma_mcp_call.py use_figma <fileKey> <脚本.js> "描述"
 ```
 
+### 替代路线评估：开源插件桥（2026-09-12 调研）
+
+配额之外还有一条理论出口：**Plugin API 不计配额**——但必须装 Figma 桌面版。
+
+- ⛔ `vkhanhqui/figma-mcp-go`（二手教程常推）**已于 2026-07-01 被 DMCA 下架**：它是
+  `gethopp/figma-mcp-bridge` 的衍生品，且未保留上游 MIT 版权声明。**不要再照抄那些教程。**
+- `gethopp/figma-mcp-bridge`（559★，原创，MIT）变量**只能读**（`get_variable_defs`），不能写。
+- `southleft/figma-console-mcp`（2.2k★，MIT）**双向 token 同步**：`figma_export_tokens` /
+  `figma_import_tokens` 走 DTCG JSON，兼容 Tokens Studio 格式。它与本目录
+  `tools/export_figma_tokens.py` 在做的事高度重叠——**相当于现成成品，走插件桥应优先评估它**。
+- `awdr74100/figwright` 维护活跃，但 README 无任何上游归属声明，生态风险未澄清。
+- ❌ REST API `/v1/files/:key/variables` 是 **Enterprise-only**（403 `Limited by Figma plan`），
+  免费计划**不能**用 PAT 绕开。
+
+**共同卡点**：所有插件桥都要求 **Figma 桌面版**（开发插件只能桌面端导入），装到
+`%LOCALAPPDATA%\Figma` 即 **C 盘**，与"严禁写 C 盘"硬约束冲突。本机实测 C/F/G 三盘均未安装。
+
+详见 `G:\Open Code\docs\UI_UX_WORKFLOW_FIGMA.md` §3.4。
+
 ---
 
 ## 阶段 1 续 — 落地时必踩的坑（本轮新增 3 条）
