@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.i18n import tr
+from app.ui.theme import tokens
 from app.ui.visual_cue_preview import VisualCuePreview
 from app.utils.logger import get_logger
 
@@ -279,14 +280,20 @@ class PositionEditor(QWidget):
         self._cancel_button.setText(tr("position.cancel"))
 
 
+# 按钮样式全部走设计系统 token（此前是硬编码蓝 #1976d2 / 灰 rgba(...)，属 V0.6
+# 之前的遗留，与「主色只有一个真源」冲突）。
 _BUTTON_STYLE_PRIMARY = (
-    "QPushButton { background-color: #1976d2; color: white; border: none; "
-    "border-radius: 6px; padding: 10px 26px; font-size: 14px; font-weight: bold; }"
-    "QPushButton:hover { background-color: #1565c0; }"
+    f"QPushButton {{ background-color: {tokens.PRIMARY}; color: {tokens.TEXT_INVERTED}; "
+    f"border: none; border-radius: {tokens.RADIUS_SM}px; "
+    f"padding: 10px 26px; font-size: {tokens.BODY}px; font-weight: bold; }}"
+    f"QPushButton:hover {{ background-color: {tokens.PRIMARY_HOVER}; }}"
+    f"QPushButton:pressed {{ background-color: {tokens.PRIMARY_PRESSED}; }}"
 )
 
 _BUTTON_STYLE_GRAY = (
-    "QPushButton { background-color: rgba(120, 124, 134, 220); color: white; "
-    "border: none; border-radius: 6px; padding: 10px 22px; font-size: 14px; }"
-    "QPushButton:hover { background-color: rgba(96, 100, 110, 230); }"
+    f"QPushButton {{ background-color: {tokens.BG_SOFT}; color: {tokens.TEXT_PRIMARY}; "
+    f"border: 1px solid {tokens.BORDER}; border-radius: {tokens.RADIUS_SM}px; "
+    f"padding: 10px 22px; font-size: {tokens.BODY}px; }}"
+    f"QPushButton:hover {{ background-color: {tokens.BG_RAISED}; "
+    f"border-color: {tokens.BORDER_FOCUS}; }}"
 )

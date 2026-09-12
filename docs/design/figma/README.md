@@ -81,13 +81,46 @@ cd "G:/Open Code/apps/EyeRest"
 > 可以批量创建 Variables / 组件 / frame。原先"远程版不能写、只能走 Tokens Studio 手工导入"
 > 的判断是错的（见 `UI_UX_WORKFLOW_FIGMA.md` §3.2）。
 
-**执行要点**：
+**执行要点**（已按此执行）：
 
 1. 调 `use_figma` **前必须先加载 `/figma-use` skill**（skill 正文用 MCP `resources/read` 读
    `skill://figma/figma-use/SKILL.md`，索引在 `skill://index.json`）。
 2. 调 `create_new_file` 前必须先加载 `/figma-create-new-file` skill。
-3. 用 `figma.variables.createVariable()` 批量建变量，数据源读 `tokens.json`；
-   8 个别名用 `figma.variables.createVariableAlias()` 建。
+3. 变量用 `figma.variables.createVariable(name, collection, 'COLOR'|'FLOAT')` 建。
+   **别名没有单独方法**——是 `variable.setValueForMode(modeId, { type: 'VARIABLE_ALIAS', id: 目标变量.id })`。
+4. **每个变量都要显式设 `scopes`**：默认 `ALL_SCOPES` 会污染所有属性选择器。
+   本项目的约定是底色 → `FRAME_FILL`+`SHAPE_FILL`、文字 → `TEXT_FILL`、
+   描边 → `STROKE_COLOR`、间距/内边距 → `GAP`、圆角 → `CORNER_RADIUS`、
+   窗口尺寸 → `WIDTH_HEIGHT`、字号 → `FONT_SIZE`。
+5. **阴影做不成变量**，只能用 effect style —— 所以 63 个 token 落到 Figma 是
+   **60 个变量 + 3 个 effect style**。
+6. 每次 `use_figma` 最多切一次页；纯写变量时不需要切页（默认在第一页）。
+
+### ✅ 阶段 1a 已落地（2026-09-12）
+
+| 项 | 结果 |
+|---|---|
+| 集合 | `EyeRest Tokens`，模式 `Light`（免费计划仅 1 个模式，够用） |
+| 变量 | **60 个** — color 35 / space 8 / radius 5 / size 5 / font-size 7 |
+| 别名 | **8 个**，回读校验全部指向正确 |
+| 效果样式 | `Shadow/Card`（0,2 blur8）、`Shadow/Raised`（0,4 blur16）、`Shadow/Focus`（0,0 blur0 spread3） |
+
+**页面 `01 Foundations`** 上的三块展示板（色块/间距条全部**绑定变量**，不是硬编码值）：
+
+| Frame | 节点 ID | 内容 |
+|---|---|---|
+| `Foundations / Color Core` | `3:2` | Background / Brand / Text / Border，21 个色卡 |
+| `Foundations / Color Semantic` | `3:105` | Info / Accent / Status / Rhythm，14 个色卡 |
+| `Foundations / Scale` | `3:176` | spacing / radius / font-size / window size |
+
+色卡副标题会自动显示 `= brand/primary` 这类别名指向——**这是别名生效的可视证据**，
+也是"改主色只需改一处"的验证点。
+
+> ⚠️ `use_figma` 的两个高频坑（本轮都踩到了）：
+> 1. **`layoutSizingHorizontal = 'FILL'` 必须在 `parent.appendChild(child)` 之后设**，
+>    否则报 `FILL can only be set on children of auto-layout frames`。
+> 2. **WRAP 要生效，容器必须固定主轴尺寸**：先 `resize(W, h)` → 设 `counterAxisSizingMode='FIXED'`
+>    → 最后设 `primaryAxisSizingMode='AUTO'`（`resize()` 会重置 sizing mode，顺序不能反）。
 
 <details>
 <summary>备选路径（Tokens Studio 手工导入，已不推荐）</summary>
@@ -105,7 +138,7 @@ cd "G:/Open Code/apps/EyeRest"
 
 </details>
 
-63 个变量 / 8 个别名；改主色时别名自动跟随。**同一份 `tokens.json`，两条路径都能用。**
+**60 个变量 + 3 个效果样式 / 8 个别名**；改主色时别名自动跟随。**同一份 `tokens.json`，两条路径都能用。**
 
 ### 为什么用别名
 
@@ -129,10 +162,68 @@ color/rhythm/move     →  color/accent/deep
 
 ---
 
-## 阶段 1 续 — 组件库
+## 阶段 1 续 — 组件库 🔶 进行中（2026-09-12）
 
-按 `tokens-report.md` 的分组建组件，同样走 `use_figma`。组件清单见
-`UI_UX_WORKFLOW_FIGMA.md` 阶段 1 的 Components 表（Button / Card / Tile / Control / Nav / Pill）。
+### 已落地
+
+| 项 | 结果 |
+|---|---|
+| 页面 | `01 Foundations` / `02 Components`(5:11) / `03 Blocks`(5:12) |
+| 文字样式 | 7 个 `Type/*`：Display(ZCOOL KuaiLe 32) / H1 22 / H2 18 / H3 16 / Body 14 / Secondary 13 / Caption 12 |
+| 组件 | `Button/Primary` 变体集 `5:28`（4 变体，属性轴 `State`） |
+| 品牌字体 | **ZCOOL KuaiLe 在 Figma 侧可用**，与应用同款，不需要替代字体 |
+
+### ⛔ 阻塞：Starter 席位每月仅 20 次 MCP 调用
+
+**这推翻了上一轮"免费计划足够"的结论，必须更正。**
+
+官方口径（`file://figma/docs/rate-limits-access.md`）：**Starter + View 席位 = 20 次/月**；
+豁免工具只有 `add_code_connect_map` / `create_new_file` / `whoami`。
+
+实测（2026-09-12）：`use_figma`、`get_metadata` 均已返回
+`You've reached the Figma MCP tool call limit on the Starter plan`。
+直连 `whoami` 仍成功，但它是**豁免工具**，不能据此认为配额还有余量。
+
+> 20 次/月不足以逐次交互式建完 12 组件 + 9 区块（本轮仅"排查 + 建 1 个组件"就用掉 5 次）。
+> 出路：升级 Professional + Dev/Full 席位（200 次/天）／学籍计划（同 200 次/天）／等下月重置／改走路线 C。
+
+### 执行口径调整：规格先行 + 脚本化批量
+
+组件与区块规格已定死在 **`docs/design/SPEC_COMPONENTS_AND_BLOCKS.md`**（12 组件 + 9 区块 + 状态矩阵 + 不一致清单）。
+落地时把整批写成一个脚本、一次调用建完，避免细粒度往返。
+
+### 直连工具（绕过客户端，也便于脚本化）
+
+```bash
+./.venv/Scripts/python.exe tools/figma_mcp_call.py list                  # 列出全部工具
+./.venv/Scripts/python.exe tools/figma_mcp_call.py whoami                # 豁免，不计数
+./.venv/Scripts/python.exe tools/figma_mcp_call.py call get_metadata '{"fileKey":"...","nodeId":"5:28"}'
+./.venv/Scripts/python.exe tools/figma_mcp_call.py use_figma <fileKey> <脚本.js> "描述"
+```
+
+---
+
+## 阶段 1 续 — 落地时必踩的坑（本轮新增 3 条）
+
+> ⚠️ 上面的「`layoutSizingHorizontal` 顺序」与「WRAP 需固定主轴尺寸」两条仍然有效，以下是新增：
+
+7. **Starter 计划只给 3 个页面。** 第 4 个 `figma.createPage()` 直接抛
+   `The Starter plan only comes with 3 pages`。所以完整界面 frame 只能并入 `03 Blocks`，不要另开 `04 Screens`。
+
+8. **`use_figma` 是整脚本事务性的。** 一次调用里前面已成功建好的东西，只要脚本后段抛错，
+   **全部回滚**（实测：建 7 个文字样式成功 → 建页面抛错 → 回查文字样式为空）。所以宁可拆小，不要押注"应该能跑完"。
+
+9. **`setBoundVariableForPaint` 会保留传入 paint 的字面色，且渲染优先用字面色。**
+   传 `{type:'SOLID', color:{r:0.5,g:0.5,b:0.5}}` 再绑到白色变量 → 节点上**绑定是对的**，
+   但**渲染出来是 `#808080` 灰**。而自动生成的绑定 paint（无 `color` 字段、只有 `boundVariables`）渲染正常。
+   **正确写法：绑定时不要给字面色。**
+
+   ```js
+   // ✗ 渲染成灰
+   node.fills = [figma.variables.setBoundVariableForPaint({ type: 'SOLID', color: { r: .5, g: .5, b: .5 } }, 'color', V)];
+   // ✓ 只留绑定
+   node.fills = [{ type: 'SOLID', boundVariables: { color: { type: 'VARIABLE_ALIAS', id: V.id } } }];
+   ```
 
 ---
 
