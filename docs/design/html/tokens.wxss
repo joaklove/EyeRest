@@ -1,0 +1,72 @@
+/* 由 tools/export_css_tokens.py 从 app/ui/theme/tokens.py 生成，请勿手改。 */
+page {
+  /* color */
+  --color-bg-canvas: #FBF5EF;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-soft: #F5EFE7;
+  --color-bg-raised: var(--color-bg-surface);
+  --color-bg-sidebar: #F4ECDF;
+  --color-bg-sidebar-hover: #EDE0CD;
+  --color-bg-sidebar-active: var(--color-bg-surface);
+  --color-border-default: #EAE0D2;
+  --color-border-soft: #F1E8D9;
+  --color-border-focus: var(--color-brand-primary);
+  --color-text-primary: #2D3748;
+  --color-text-secondary: #718096;
+  --color-text-muted: #A0AEC0;
+  --color-text-disabled: #CBD5E0;
+  --color-text-inverted: #FFFFFF;
+  --color-text-brand: var(--color-brand-text);
+  --color-brand-primary: #26AE89;
+  --color-brand-hover: #1FA37E;
+  --color-brand-pressed: #17906E;
+  --color-brand-soft: #DDF5EE;
+  --color-brand-text: #1F7A61;
+  --color-info-base: #5BA8D6;
+  --color-info-soft: #E5F1F9;
+  --color-accent-base: #FFD9AB;
+  --color-accent-deep: #F4B570;
+  --color-accent-soft: #FFF3E2;
+  --color-status-warning: #E8B86D;
+  --color-status-warning-soft: #FCF1DC;
+  --color-status-danger: #E57D7D;
+  --color-status-danger-soft: #FBE7E7;
+  --color-status-success: var(--color-brand-primary);
+  --color-rhythm-blink: var(--color-brand-primary);
+  --color-rhythm-look: var(--color-info-base);
+  --color-rhythm-move: var(--color-accent-deep);
+  --color-rhythm-deep: #B59CE0;
+  /* font-size */
+  --font-size-display: 32px;
+  --font-size-h1: 22px;
+  --font-size-h2: 18px;
+  --font-size-h3: 16px;
+  --font-size-body: 14px;
+  --font-size-secondary: 13px;
+  --font-size-caption: 12px;
+  /* radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+  /* shadow */
+  --shadow-card: 0 2px 8px rgba(45, 55, 72, 0.06);
+  --shadow-raised: 0 4px 16px rgba(45, 55, 72, 0.10);
+  --shadow-focus: 0 0 0 3px rgba(38, 174, 137, 0.25);
+  /* size */
+  --size-sidebar-width: 200px;
+  --size-window-default-w: 900px;
+  --size-window-default-h: 680px;
+  --size-window-min-w: 820px;
+  --size-window-min-h: 600px;
+  /* space */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+}

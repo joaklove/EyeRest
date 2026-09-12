@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EyeRest 设计板 · 路线 C 样板</title>
+<style>
+/* ===================================================================
+   tokens —— 由 tools/export_css_tokens.py 从 app/ui/theme/tokens.py 生成
+   请勿手改；改 tokens.py 后重跑导出脚本。
+   =================================================================== */
+:root {
+  --color-bg-canvas: #FBF5EF;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-soft: #F5EFE7;
+  --color-bg-raised: var(--color-bg-surface);
+  --color-bg-sidebar: #F4ECDF;
+  --color-bg-sidebar-hover: #EDE0CD;
+  --color-bg-sidebar-active: var(--color-bg-surface);
+  --color-border-default: #EAE0D2;
+  --color-border-soft: #F1E8D9;
+  --color-border-focus: var(--color-brand-primary);
+  --color-text-primary: #2D3748;
+  --color-text-secondary: #718096;
+  --color-text-muted: #A0AEC0;
+  --color-text-disabled: #CBD5E0;
+  --color-text-inverted: #FFFFFF;
+  --color-text-brand: var(--color-brand-text);
+  --color-brand-primary: #26AE89;
+  --color-brand-hover: #1FA37E;
+  --color-brand-pressed: #17906E;
+  --color-brand-soft: #DDF5EE;
+  --color-brand-text: #1F7A61;
+  --color-info-base: #5BA8D6;
+  --color-info-soft: #E5F1F9;
+  --color-accent-base: #FFD9AB;
+  --color-accent-deep: #F4B570;
+  --color-accent-soft: #FFF3E2;
+  --color-status-warning: #E8B86D;
+  --color-status-warning-soft: #FCF1DC;
+  --color-status-danger: #E57D7D;
+  --color-status-danger-soft: #FBE7E7;
+  --color-status-success: var(--color-brand-primary);
+  --color-rhythm-blink: var(--color-brand-primary);
+  --color-rhythm-look: var(--color-info-base);
+  --color-rhythm-move: var(--color-accent-deep);
+  --color-rhythm-deep: #B59CE0;
+  --font-size-display: 32px;
+  --font-size-h1: 22px;
+  --font-size-h2: 18px;
+  --font-size-h3: 16px;
+  --font-size-body: 14px;
+  --font-size-secondary: 13px;
+  --font-size-caption: 12px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+  --shadow-card: 0 2px 8px rgba(45, 55, 72, 0.06);
+  --shadow-raised: 0 4px 16px rgba(45, 55, 72, 0.10);
+  --shadow-focus: 0 0 0 3px rgba(38, 174, 137, 0.25);
+  --size-sidebar-width: 200px;
+  --size-window-default-w: 900px;
+  --size-window-default-h: 680px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+}
+
+/* ================= 设计板自身的排版（不属于 token 体系） ================= */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: var(--space-8);
+  background: #EDEAE4;
+  font-family: "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+.board-head { max-width: 940px; margin: 0 auto var(--space-5); }
+.board-head h1 { font-size: var(--font-size-h1); margin: 0 0 var(--space-1); font-weight: 600; }
+.board-head p { margin: 0; font-size: var(--font-size-secondary); color: var(--color-text-secondary); }
+
+/* 模拟真实主窗口：900×680 */
+.window {
+  width: var(--size-window-default-w);
+  height: var(--size-window-default-h);
+  margin: 0 auto;
+  display: flex;
+  background: var(--color-bg-canvas);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(45, 55, 72, 0.14);
+  border: 1px solid var(--color-border-default);
+}
+
+/* ---------------- Sidebar ---------------- */
+.sidebar {
+  width: var(--size-sidebar-width);
+  flex: 0 0 var(--size-sidebar-width);
+  background: var(--color-bg-sidebar);
+  padding: var(--space-5) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.brand {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-5);
+}
+.brand-mark {
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  background: var(--color-brand-primary);
+  display: grid; place-items: center;
+  color: var(--color-text-inverted);
+  font-size: var(--font-size-h3); font-weight: 600;
+}
+.brand-name { font-size: var(--font-size-h3); font-weight: 600; }
+.nav-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  cursor: default;
+  transition: background-color .15s ease;
+}
+.nav-item:hover { background: var(--color-bg-sidebar-hover); }
+.nav-item.active {
+  background: var(--color-bg-sidebar-active);
+  color: var(--color-text-brand);
+  font-weight: 600;
+  box-shadow: var(--shadow-card);
+}
+.nav-dot { width: 8px; height: 8px; border-radius: var(--radius-pill); background: currentColor; opacity: .55; }
+.nav-item.active .nav-dot { opacity: 1; background: var(--color-brand-primary); }
+.sidebar-foot { margin-top: auto; padding: var(--space-3); font-size: var(--font-size-caption); color: var(--color-text-muted); }
+
+/* ---------------- 内容区 ---------------- */
+.content { flex: 1; padding: var(--space-6) var(--space-8); overflow: hidden; }
+.hero { margin-bottom: var(--space-6); }
+.hero h2 {
+  font-family: "ZCOOL KuaiLe", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  font-size: var(--font-size-display);
+  font-weight: 400;
+  margin: 0 0 var(--space-1);
+  letter-spacing: .5px;
+}
+.hero p { margin: 0; font-size: var(--font-size-body); color: var(--color-text-secondary); }
+
+.section-title {
+  font-size: var(--font-size-h2); font-weight: 600;
+  margin: 0 0 var(--space-3);
+}
+
+/* 四节奏卡 2×2 */
+.rhythm-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3); margin-bottom: var(--space-6);
+}
+.rhythm-card {
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border-soft);
+  display: flex; align-items: flex-start; gap: var(--space-3);
+}
+.rhythm-bar { width: 4px; align-self: stretch; border-radius: var(--radius-pill); }
+.rhythm-card.blink .rhythm-bar { background: var(--color-rhythm-blink); }
+.rhythm-card.look  .rhythm-bar { background: var(--color-rhythm-look); }
+.rhythm-card.move  .rhythm-bar { background: var(--color-rhythm-move); }
+.rhythm-card.deep  .rhythm-bar { background: var(--color-rhythm-deep); }
+.rhythm-body { flex: 1; }
+.rhythm-name { font-size: var(--font-size-h3); font-weight: 600; margin: 0 0 2px; }
+.rhythm-desc { font-size: var(--font-size-caption); color: var(--color-text-secondary); margin: 0; }
+.rhythm-val { font-size: var(--font-size-body); color: var(--color-text-brand); font-weight: 600; margin-top: var(--space-2); }
+
+/* 数据卡 */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin-bottom: var(--space-6); }
+.stat {
+  background: var(--color-bg-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+.stat-label { font-size: var(--font-size-caption); color: var(--color-text-secondary); margin: 0 0 var(--space-1); }
+.stat-value { font-size: var(--font-size-h1); font-weight: 600; margin: 0; }
+.stat-unit { font-size: var(--font-size-secondary); color: var(--color-text-secondary); font-weight: 400; margin-left: 2px; }
+
+/* 按钮 */
+.actions { display: flex; gap: var(--space-3); }
+.btn {
+  border: none; border-radius: var(--radius-sm);
+  padding: 10px 26px;
+  font-size: var(--font-size-body);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: default;
+  transition: background-color .15s ease;
+}
+.btn-primary { background: var(--color-brand-primary); color: var(--color-text-inverted); }
+.btn-primary:hover { background: var(--color-brand-hover); }
+.btn-primary:active { background: var(--color-brand-pressed); }
+.btn-ghost {
+  background: var(--color-bg-soft); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-default);
+  font-weight: 400;
+}
+
+/* ================= 可实现性标注（本页特有，不属于产品 UI） ================= */
+.gap {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: #FCEBEB;
+  color: #791F1F;
+  border: 1px solid #F7C1C1;
+  vertical-align: middle;
+}
+.gap.ok { background: #EAF3DE; color: #27500A; border-color: #C0DD97; }
+.legend {
+  max-width: 940px; margin: var(--space-6) auto 0;
+  background: #FFF; border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-default);
+  padding: var(--space-5) var(--space-6);
+}
+.legend h3 { font-size: var(--font-size-h3); margin: 0 0 var(--space-3); }
+.legend table { width: 100%; border-collapse: collapse; font-size: var(--font-size-secondary); }
+.legend th, .legend td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-border-soft); }
+.legend th { color: var(--color-text-secondary); font-weight: 600; }
+.legend code { font-size: 12px; background: var(--color-bg-soft); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="board-head">
+  <h1>EyeRest 设计板 · 路线 C 样板</h1>
+  <p>单文件 HTML + CSS 变量。上面 63 个自定义属性由 <code>tools/export_css_tokens.py</code> 从 <code>app/ui/theme/tokens.py</code> 生成，与 Figma 侧共用同一套语义命名。</p>
+</div>
+
+<div class="window">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">E</div>
+      <div class="brand-name">EyeRest</div>
+    </div>
+    <div class="nav-item active"><span class="nav-dot"></span>首页</div>
+    <div class="nav-item"><span class="nav-dot"></span>设置</div>
+    <div class="nav-item"><span class="nav-dot"></span>统计</div>
+    <div class="nav-item"><span class="nav-dot"></span>关于</div>
+    <div class="sidebar-foot">状态：护眼中</div>
+  </aside>
+
+  <main class="content">
+    <div class="hero">
+      <h2>今天也要好好护眼</h2>
+      <p>屏幕暴露 3 小时 42 分 · 已提示眨眼 26 次</p>
+    </div>
+
+    <h3 class="section-title">四层节奏</h3>
+    <div class="rhythm-grid">
+      <div class="rhythm-card blink">
+        <div class="rhythm-bar"></div>
+        <div class="rhythm-body">
+          <p class="rhythm-name">眨眼提醒</p>
+          <p class="rhythm-desc">每 60 秒一次轻柔提示</p>
+          <p class="rhythm-val">已提示 26 次</p>
+        </div>
+      </div>
+      <div class="rhythm-card look">
+        <div class="rhythm-bar"></div>
+        <div class="rhythm-body">
+          <p class="rhythm-name">远眺放松</p>
+          <p class="rhythm-desc">每 20 分钟眺望 20 英尺外</p>
+          <p class="rhythm-val">下次 8 分钟后</p>
+        </div>
+      </div>
+      <div class="rhythm-card move">
+        <div class="rhythm-bar"></div>
+        <div class="rhythm-body">
+          <p class="rhythm-name">起身活动</p>
+          <p class="rhythm-desc">每 45 分钟提醒伸展</p>
+          <p class="rhythm-val">下次 33 分钟后</p>
+        </div>
+      </div>
+      <div class="rhythm-card deep">
+        <div class="rhythm-bar"></div>
+        <div class="rhythm-body">
+          <p class="rhythm-name">深度休息</p>
+          <p class="rhythm-desc">每 90 分钟休息 5 分钟</p>
+          <p class="rhythm-val">下次 1 小时后</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="section-title">今日数据</h3>
+    <div class="stat-row">
+      <div class="stat">
+        <p class="stat-label">屏幕暴露</p>
+        <p class="stat-value">3<span class="stat-unit">小时</span>42<span class="stat-unit">分</span></p>
+      </div>
+      <div class="stat">
+        <p class="stat-label">休息完成</p>
+        <p class="stat-value">4<span class="stat-unit">次</span></p>
+      </div>
+      <div class="stat">
+        <p class="stat-label">已跳过</p>
+        <p class="stat-value">1<span class="stat-unit">次</span></p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary">立即休息</button>
+      <button class="btn btn-ghost">暂停 30 分钟</button>
+    </div>
+  </main>
+</div>
+
+<div class="legend">
+  <h3>这块设计板同时是一份可实现性报告</h3>
+  <p style="font-size:13px;color:#5F5E5A;margin:0 0 16px">
+    下面每一项都在本页真实生效——浏览器能做到，Qt Widgets 不一定接得住。这正是「HTML 设计板 → Qt 实现」的真正损耗点。
+  </p>
+  <table>
+    <thead>
+      <tr><th style="width:34%">本页用到的能力</th><th style="width:22%">浏览器 / 小程序</th><th>Qt Widgets (QSS)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>var(--color-*)</code> 变量引用</td>
+        <td><span class="gap ok">原生支持</span></td>
+        <td><span class="gap">无原生变量</span> 必须代入字面值</td>
+      </tr>
+      <tr>
+        <td><code>box-shadow</code> 卡片柔光</td>
+        <td><span class="gap ok">原生支持</span></td>
+        <td><span class="gap">QSS 不支持</span> 需 QGraphicsDropShadowEffect，且一个控件只能挂一个</td>
+      </tr>
+      <tr>
+        <td><code>transition</code> 悬停过渡</td>
+        <td><span class="gap ok">原生支持</span></td>
+        <td><span class="gap">不支持</span> 无 transition / easing</td>
+      </tr>
+      <tr>
+        <td>CSS <code>grid</code> 2×2 节奏卡</td>
+        <td><span class="gap ok">浏览器原生 / 小程序仅 Flex</span></td>
+        <td><span class="gap">无 CSS 布局</span> 需 QGridLayout 手工排</td>
+      </tr>
+      <tr>
+        <td><code>line-height</code> 行距松弛感</td>
+        <td><span class="gap ok">原生支持</span></td>
+        <td><span class="gap">QSS 无此项</span> 需 QTextDocument 或手工 padding</td>
+      </tr>
+      <tr>
+        <td><code>letter-spacing</code> 标题字距</td>
+        <td><span class="gap ok">原生支持</span></td>
+        <td><span class="gap">须走 API</span> QFont.setLetterSpacing</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>
