@@ -9,7 +9,7 @@ Dashboard / Settings / Statistics / MainWindow 散落定义。
 
 from __future__ import annotations
 
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor, QFont
 
 # ----------------------------------------------------------------------
 # 颜色（Color）
@@ -77,6 +77,36 @@ SHADOW_RAISED = "0 4px 16px rgba(45, 55, 72, 0.10)"
 SHADOW_FOCUS = "0 0 0 3px rgba(38, 174, 137, 0.25)"
 
 # ----------------------------------------------------------------------
+# 遮罩与浮层（PositionEditor 编辑态）
+# ----------------------------------------------------------------------
+# alpha 统一写 **0-1 小数**，而不是 Qt 惯用的 0-255 整数。原因：
+#   0-255 整数是 QSS 合法、**CSS 不合法**的写法 —— 浏览器会把 >1 的 alpha
+#   clamp 成 1，遮罩在设计板里会变成纯黑，设计源与实现就对不上了。
+#   实测（.build/probe_rgba.py）：Qt 对 `120` / `0.47` / `47%` 三种写法分别
+#   解析出 alpha 0.469 / 0.465 / 0.469，即**小数与百分比在两侧都合法**。
+# 分量单独存一份，是因为 QColor 不认 CSS 的 rgba() 语法（实测
+# QColor.fromString("rgba(10, 12, 18, 0.471)") 返回 invalid）。
+OVERLAY_SCRIM_RGBA: tuple[int, int, int, float] = (10, 12, 18, 0.471)
+OVERLAY_TIP_BG_RGBA: tuple[int, int, int, float] = (20, 24, 34, 0.824)
+OVERLAY_TIP_TEXT = "#EAF4FF"    # 提示条文字（冷白，压在深色提示条上）
+
+
+def rgba(value: tuple[int, int, int, float]) -> str:
+    """``(r, g, b, a)`` -> Qt QSS 与 CSS **共同合法**的 rgba() 字符串。"""
+    r, g, b, a = value
+    return f"rgba({r}, {g}, {b}, {a})"
+
+
+def to_qcolor(value: tuple[int, int, int, float]) -> QColor:
+    """``(r, g, b, a)`` -> QColor。走分量而非字符串，QColor 不认 CSS rgba()。"""
+    r, g, b, a = value
+    return QColor.fromRgbF(r / 255.0, g / 255.0, b / 255.0, a)
+
+
+OVERLAY_SCRIM = rgba(OVERLAY_SCRIM_RGBA)      # 全屏遮罩
+OVERLAY_TIP_BG = rgba(OVERLAY_TIP_BG_RGBA)    # 提示条底
+
+# ----------------------------------------------------------------------
 # 字体（Typography）
 # ----------------------------------------------------------------------
 
@@ -120,6 +150,13 @@ RADIUS_MD = 10
 RADIUS_LG = 14
 RADIUS_XL = 20
 RADIUS_PILL = 999
+
+# 按钮统一几何（2026-09-13 裁定，见 docs/design/SPEC_COMPONENTS_AND_BLOCKS.md §4）
+# 此前是三套手写值：position_editor r6 + pad 10×26、settings r8 + pad 8×18/8×26。
+# 现在统一 r16 + pad 12×24（水平 24 = space/6，垂直 12 = space/3）。
+RADIUS_BUTTON = 16
+BUTTON_PAD_V = SPACE_3   # 12
+BUTTON_PAD_H = SPACE_6   # 24
 
 # ----------------------------------------------------------------------
 # 尺寸（Sizing）

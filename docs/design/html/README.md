@@ -12,9 +12,9 @@
 | 文件 | 性质 | 说明 |
 |---|---|---|
 | `board.src.html` | **手写源** | 设计板的结构与样式。**要改设计板就改这里。** |
-| `design-board.html` | **产物** | 自包含单文件（约 2 MB，内含 63 token + base64 品牌字体）。双击即可打开。 |
-| `tokens.css` | **产物** | 63 个 CSS 变量，`:root` 作用域 |
-| `tokens.wxss` | **产物** | 同 63 个变量，`page` 作用域（微信小程序） |
+| `design-board.html` | **产物** | 自包含单文件（约 2 MB，内含 69 token + base64 品牌字体）。双击即可打开。 |
+| `tokens.css` | **产物** | 69 个 CSS 变量，`:root` 作用域 |
+| `tokens.wxss` | **产物** | 同 69 个变量，`page` 作用域（微信小程序） |
 | `tokens-report.md` | **产物** | 分组统计、别名映射、三目标可实现性对照 |
 
 产物一律 **禁止手改**——改了会在下次生成时被覆盖。
@@ -121,3 +121,10 @@ export TEMP="G:/Open Code/apps/EyeRest/.build/tmp"; export TMP="$TEMP"
    与代码里的 `QAbstractSpinBox.NoButtons` 口径不符，会误导判读。
 5. 设计板里的**产品 UI 只用 `var(--...)`**；设计板自身的排版（页头、图例、标注）才允许写字面值。
    两者混用会让"token 覆盖度"失真。
+6. **半透明色必须写 0-1 小数 alpha，不能沿用 QSS 的 0-255 整数**。
+   `rgba(10, 12, 18, 120)` 在 Qt 里合法，在浏览器里会被 clamp 成 1 → 遮罩变**纯黑**，
+   设计板与实现静默不一致。实测 Qt 对 `120` / `0.47` / `47%` 分别解析出 0.469 / 0.465 / 0.469，
+   故小数与百分比是两侧唯一的公共写法。对应 token：`--color-overlay-scrim` / `--color-overlay-tip-bg`。
+7. **板的几何要与控件代码对账，别照"看起来合理"画**。此前本板把 PositionEditor 画成
+   「浮层面板 + 标题 + 副文案」，真实实现只有一个居中提示条 —— 已删。改板前先读
+   `position_editor.py` 的 `_build_ui()`。

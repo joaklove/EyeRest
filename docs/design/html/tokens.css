@@ -36,6 +36,9 @@
   --color-rhythm-look: var(--color-info-base);
   --color-rhythm-move: var(--color-accent-deep);
   --color-rhythm-deep: #B59CE0;
+  --color-overlay-scrim: rgba(10, 12, 18, 0.471);
+  --color-overlay-tip-bg: rgba(20, 24, 34, 0.824);
+  --color-overlay-tip-text: #EAF4FF;
   /* font-size */
   --font-size-display: 32px;
   --font-size-h1: 22px;
@@ -50,6 +53,7 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-pill: 999px;
+  --radius-button: 16px;
   /* shadow */
   --shadow-card: 0 2px 8px rgba(45, 55, 72, 0.06);
   --shadow-raised: 0 4px 16px rgba(45, 55, 72, 0.10);
@@ -69,4 +73,6 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
+  --space-button-v: var(--space-3);
+  --space-button-h: var(--space-6);
 }

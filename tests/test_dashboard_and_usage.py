@@ -193,6 +193,24 @@ class TestUsageService(unittest.TestCase):
         self.assertEqual(summary["blink_cues"], 0)
         self.assertEqual(summary["session_count"], 0)
 
+    def test_summary_exposes_independent_break_counts(self) -> None:
+        """远眺与长休各有独立计数（首页今日数据分列两列，不能只给合计）。
+
+        修复前：``break_count`` 是 ``look_away + deep`` 的合计，而今日数据卡
+        既要显示"远眺"又要显示"长休"，接口却没有分项，导致远眺那列显示合计。
+        """
+        self.store.record("look_away", 3)
+        self.store.record("deep_break", 5)
+        self.store.record("move", 7)
+        self.store.record("skipped_break", 2)
+
+        summary = self.service.get_today_summary()
+        self.assertEqual(summary["look_away_count"], 3)
+        self.assertEqual(summary["deep_break_count"], 5)
+        self.assertEqual(summary["break_count"], 8)   # 合计口径保留
+        self.assertEqual(summary["move_count"], 7)
+        self.assertEqual(summary["skipped_breaks"], 2)
+
     def test_get_today_summary_with_session(self) -> None:
         """有活跃会话时摘要包含实时增量。"""
         session_id = self.service.start_session()

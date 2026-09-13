@@ -66,6 +66,20 @@ class TestSettingsPage(unittest.TestCase):
         self.bus_events.append((EventType.SETTINGS_CHANGED, data))
 
     # ------------------------------------------------------------------
+    # 设计系统一致性（§4 裁定：按钮统一 r16 + pad 12×24）
+    # ------------------------------------------------------------------
+    def test_bottom_buttons_use_unified_geometry_tokens(self) -> None:
+        """恢复默认 / 保存设置 的圆角与内边距统一走 token。"""
+        from app.ui.theme import tokens
+
+        for button in (self.page._reset_button, self.page._save_button):
+            sheet = button.styleSheet()
+            self.assertIn(f"border-radius: {tokens.RADIUS_BUTTON}px", sheet)
+            self.assertIn(
+                f"padding: {tokens.BUTTON_PAD_V}px {tokens.BUTTON_PAD_H}px", sheet
+            )
+
+    # ------------------------------------------------------------------
     # 页面创建
     # ------------------------------------------------------------------
     def test_page_creates_with_all_controls(self) -> None:

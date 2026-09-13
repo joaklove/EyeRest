@@ -303,7 +303,8 @@ class SettingsPage(QWidget):
         self._reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._reset_button.setStyleSheet(
             f"QPushButton {{ background-color: {tokens.BG_SOFT}; color: {tokens.TEXT_SECONDARY}; "
-            f"border: 1px solid {tokens.BORDER}; border-radius: 8px; padding: 8px 18px; font-size: 13px; }}"
+            f"border: 1px solid {tokens.BORDER}; border-radius: {tokens.RADIUS_BUTTON}px; "
+            f"padding: {tokens.BUTTON_PAD_V}px {tokens.BUTTON_PAD_H}px; font-size: 13px; }}"
             f"QPushButton:hover {{ background-color: {tokens.BORDER_SOFT}; border-color: {tokens.PRIMARY}; }}"
         )
         self._reset_button.clicked.connect(self._on_reset)
@@ -315,7 +316,8 @@ class SettingsPage(QWidget):
         self._save_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._save_button.setStyleSheet(
             f"QPushButton {{ background-color: {tokens.PRIMARY}; color: {tokens.TEXT_INVERTED}; "
-            f"border: none; border-radius: 8px; padding: 8px 26px; font-size: 13px; "
+            f"border: none; border-radius: {tokens.RADIUS_BUTTON}px; "
+            f"padding: {tokens.BUTTON_PAD_V}px {tokens.BUTTON_PAD_H}px; font-size: 13px; "
             f"font-weight: bold; }}"
             f"QPushButton:hover {{ background-color: {tokens.PRIMARY_HOVER}; }}"
             f"QPushButton:pressed {{ background-color: {tokens.PRIMARY_PRESSED}; }}"
@@ -869,7 +871,7 @@ QPushButton {{
     background-color: transparent;
     color: {tokens.TEXT_PRIMARY};
     border: 1px solid {tokens.BORDER};
-    border-radius: 8px;
+    border-radius: {tokens.RADIUS_BUTTON}px;
     padding: 6px 16px;
     font-size: {tokens.BODY}px;
 }}

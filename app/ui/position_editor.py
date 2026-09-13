@@ -85,14 +85,14 @@ class PositionEditor(QWidget):
         self._hint = QLabel(tr("position.hint"), self)
         self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._hint.setStyleSheet(
-            """
-            QLabel {
-                color: #eaf4ff;
-                background-color: rgba(20, 24, 34, 210);
-                border-radius: 10px;
+            f"""
+            QLabel {{
+                color: {tokens.OVERLAY_TIP_TEXT};
+                background-color: {tokens.OVERLAY_TIP_BG};
+                border-radius: {tokens.RADIUS_MD}px;
                 padding: 10px 18px;
                 font-size: 15px;
-            }
+            }}
             """
         )
         self._hint.adjustSize()
@@ -207,10 +207,10 @@ class PositionEditor(QWidget):
     # ------------------------------------------------------------------
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
         """绘制半透明遮罩（让屏幕变暗，突出提示位置）。"""
-        from PySide6.QtGui import QColor, QPainter
+        from PySide6.QtGui import QPainter
 
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(10, 12, 18, 120))
+        painter.fillRect(self.rect(), tokens.to_qcolor(tokens.OVERLAY_SCRIM_RGBA))
         super().paintEvent(event)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802 (Qt 命名)
@@ -280,20 +280,22 @@ class PositionEditor(QWidget):
         self._cancel_button.setText(tr("position.cancel"))
 
 
-# 按钮样式全部走设计系统 token（此前是硬编码蓝 #1976d2 / 灰 rgba(...)，属 V0.6
-# 之前的遗留，与「主色只有一个真源」冲突）。
+# 按钮样式全部走设计系统 token（此前是硬编码的蓝底白字 / 半透明灰底，属 V0.6
+# 之前的遗留，与「主色只有一个真源」冲突）。几何按 §4 裁定统一 r16 + pad 12×24。
 _BUTTON_STYLE_PRIMARY = (
     f"QPushButton {{ background-color: {tokens.PRIMARY}; color: {tokens.TEXT_INVERTED}; "
-    f"border: none; border-radius: {tokens.RADIUS_SM}px; "
-    f"padding: 10px 26px; font-size: {tokens.BODY}px; font-weight: bold; }}"
+    f"border: none; border-radius: {tokens.RADIUS_BUTTON}px; "
+    f"padding: {tokens.BUTTON_PAD_V}px {tokens.BUTTON_PAD_H}px; "
+    f"font-size: {tokens.BODY}px; font-weight: bold; }}"
     f"QPushButton:hover {{ background-color: {tokens.PRIMARY_HOVER}; }}"
     f"QPushButton:pressed {{ background-color: {tokens.PRIMARY_PRESSED}; }}"
 )
 
 _BUTTON_STYLE_GRAY = (
     f"QPushButton {{ background-color: {tokens.BG_SOFT}; color: {tokens.TEXT_PRIMARY}; "
-    f"border: 1px solid {tokens.BORDER}; border-radius: {tokens.RADIUS_SM}px; "
-    f"padding: 10px 22px; font-size: {tokens.BODY}px; }}"
+    f"border: 1px solid {tokens.BORDER}; border-radius: {tokens.RADIUS_BUTTON}px; "
+    f"padding: {tokens.BUTTON_PAD_V}px {tokens.BUTTON_PAD_H}px; "
+    f"font-size: {tokens.BODY}px; }}"
     f"QPushButton:hover {{ background-color: {tokens.BG_RAISED}; "
     f"border-color: {tokens.BORDER_FOCUS}; }}"
 )

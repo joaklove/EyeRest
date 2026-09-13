@@ -144,6 +144,11 @@ def build() -> dict:
             "move": alias("color.accent.deep"),
             "deep": color(T.RHYTHM_DEEP),
         },
+        "overlay": {
+            "scrim": color(T.OVERLAY_SCRIM),
+            "tip-bg": color(T.OVERLAY_TIP_BG),
+            "tip-text": color(T.OVERLAY_TIP_TEXT),
+        },
     }
 
     tokens["space"] = {
@@ -152,6 +157,9 @@ def build() -> dict:
             (5, T.SPACE_5), (6, T.SPACE_6), (8, T.SPACE_8), (10, T.SPACE_10),
         ]
     }
+    # 组件级语义别名：按钮内边距（§4 裁定 = 水平 24 / 垂直 12）
+    tokens["space"]["button-v"] = alias("space.3")
+    tokens["space"]["button-h"] = alias("space.6")
 
     tokens["radius"] = {
         "sm": number(T.RADIUS_SM),
@@ -159,6 +167,7 @@ def build() -> dict:
         "lg": number(T.RADIUS_LG),
         "xl": number(T.RADIUS_XL),
         "pill": number(T.RADIUS_PILL),
+        "button": number(T.RADIUS_BUTTON),
     }
 
     tokens["size"] = {
@@ -283,6 +292,9 @@ def main() -> int:
         "| `RHYTHM_BLINK/LOOK/MOVE/DEEP` | `color/rhythm/*` |",
         "| `SPACE_n` | `space/n` |",
         "| `RADIUS_*` | `radius/*` |",
+        "| `RADIUS_BUTTON` | `radius/button`（§4 裁定：按钮统一 r16） |",
+        "| `BUTTON_PAD_V/H` | `space/button-v`(→`space/3`) / `space/button-h`(→`space/6`) |",
+        "| `OVERLAY_SCRIM/TIP_BG/TIP_TEXT` | `color/overlay/*`（alpha 用 0-1 小数） |",
         "| `DISPLAY/H1/H2/H3/BODY/SECONDARY/CAPTION` | `font-size/*` |",
         "| `SHADOW_*` | `shadow/*` |",
         "",

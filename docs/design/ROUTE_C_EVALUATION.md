@@ -31,7 +31,7 @@ app/ui/theme/tokens.py  （唯一真源）
                                   ──▶ docs/design/html/tokens.wxss    （page 作用域 → 小程序）
 ```
 
-实测产出 **63 个变量 / 3 组目标**，命名一一对应（`color.bg.canvas` → `--color-bg-canvas`
+实测产出 **69 个变量 / 3 组目标**，命名一一对应（`color.bg.canvas` → `--color-bg-canvas`
 → Figma 的 `color/bg/canvas`）。
 
 **关键实测发现**：`tokens.py` 里的阴影值写的就是 **CSS 语法**
@@ -162,7 +162,7 @@ HTML 设计板同样能画出那些效果（浏览器也支持 `box-shadow` / `b
 
 **2026-09-13：用户拍板走路线 C，设计板已从"样板"展开为"完整板"。**
 
-- ✅ `tools/export_css_tokens.py` —— 63 变量 → CSS（`:root`）+ WXSS（`page`）
+- ✅ `tools/export_css_tokens.py` —— 69 变量 → CSS（`:root`）+ WXSS（`page`）
 - ✅ `docs/design/html/tokens.css` / `tokens.wxss` / `tokens-report.md`
 - ✅ `tools/build_design_board.py` —— 从 `board.src.html` 生成**自包含**设计板
       （注入 token + base64 内嵌品牌字体；产物 2.0 MB，零外部依赖，双击即开）

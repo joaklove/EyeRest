@@ -55,6 +55,8 @@ from PySide6.QtWidgets import (
     QProgressBar,
 )
 
+from app.ui.theme import tokens
+
 from app.config import defaults
 from app.i18n.translator import tr
 from app.utils.logger import get_logger
@@ -162,13 +164,13 @@ class VisualCuePopup(QWidget):
         self._card = QFrame(self)
         self._card.setObjectName("cueCard")
         self._card.setStyleSheet(
-            """
-            QFrame#cueCard {
+            f"""
+            QFrame#cueCard {{
                 background-color: rgba(255, 250, 242, 240);
                 border-radius: 22px;
                 border: 1px solid rgba(38, 174, 137, 90);
-            }
-            QLabel { color: #eaf4ff; background: transparent; }
+            }}
+            QLabel {{ color: {tokens.TEXT_PRIMARY}; background: transparent; }}
             """
         )
         outer.addWidget(self._card)

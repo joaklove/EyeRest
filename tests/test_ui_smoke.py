@@ -65,6 +65,42 @@ class TestDesignTokens(unittest.TestCase):
         self.assertEqual(tokens.WINDOW_DEFAULT_W, 900)
 
 
+class TestCueReadability(unittest.TestCase):
+    """提示卡文字在卡片底色上必须可读。
+
+    回归背景：V0.6 暖色改版（f487020）把提示卡底从深色
+    ``rgba(28, 32, 44, 235)`` 改成暖白 ``rgba(255, 250, 242, 240)``，
+    但 ``QLabel`` 的文字色仍留在 ``#eaf4ff``（近白）—— 近白压暖白，
+    提示文案实质不可见。此处读样式表解析后的**有效**文字色做守门。
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_popup_text_is_dark_on_warm_white_card(self) -> None:
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QPalette
+
+        from app.ui.visual_cue import VisualCuePopup
+
+        popup = VisualCuePopup()
+        popup.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        popup.show_cue(kind="blink", with_text=True)
+        self.app.processEvents()
+
+        color = popup._text.palette().color(QPalette.ColorRole.WindowText)
+        luminance = (
+            0.2126 * color.redF() + 0.7152 * color.greenF() + 0.0722 * color.blueF()
+        )
+        self.assertLess(
+            luminance,
+            0.5,
+            f"提示文字 {color.name()} 亮度过高，在暖白卡 #FFFAF2 上不可读",
+        )
+        popup.hide()
+
+
 class TestMainWindowSidebar(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

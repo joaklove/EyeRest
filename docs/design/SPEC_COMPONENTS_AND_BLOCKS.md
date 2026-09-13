@@ -13,10 +13,10 @@
 
 | 项 | 数量 | 状态 |
 |---|---|---|
-| 组件 | 12 | 1 个已落 Figma（`Button/Primary`），其余规格已定 |
-| 区块 | 9 | IA 已定，frame 待落 |
+| 组件 | 12 | 规格已定；Figma 侧仅 1 个（配额阻塞），HTML 设计板已全量呈现 |
+| 区块 | 9 | IA 已定；HTML 设计板已全量呈现（路线 C） |
 | 实际需要的状态帧 | **约 39**（不是 9×8=72） | 见 §3 的「不适用」判定 |
-| 代码 ↔ 设计源不一致 | 5 条 | 1 条已修，4 条待裁定 |
+| 代码 ↔ 设计源不一致 | 9 条 | **7 条已裁定并落地**，2 条待裁定（见 §4） |
 
 **为什么会有这份文件**：Figma Starter 席位每月仅 20 次 MCP 调用（§6），不足以把 12 个组件 + 9 个区块**逐次交互式**建完。
 所以执行口径改为「规格先定死，再脚本化批量落地」——本文件就是那份规格。
@@ -31,9 +31,9 @@
 
 | # | 组件 | 变体轴 | 几何 | 绑定 token | 文字样式 | 代码锚点 |
 |---|---|---|---|---|---|---|
-| 1 | `Button/Primary` | State=Default/Hover/Pressed/Disabled | r=6, pad 10×26, 高 41 | fill `color/brand/{primary,hover,pressed}`＋Disabled `color/bg/soft`；text `color/text/inverted`／`color/text/disabled` | Body(14) **Bold** | `position_editor.py:283` `[码]` |
-| 2 | `Button/Secondary` | State=Default/Hover/Pressed | r=8, pad 8×26, fontSize 13 | fill `bg/soft`，border `border/default`，text `text/primary` | Secondary(13) | `settings.py:318` `[码]` |
-| 3 | `Button/Ghost` | State=Default/Hover | r=6, pad 10×22 | fill `bg/soft`＋border `border/default`，hover `border/focus` | Body(14) | `position_editor.py:288` `[码]`（原为透明灰） |
+| 1 | `Button/Primary` | State=Default/Hover/Pressed/Disabled | **r=16**, **pad 12×24**, 高 42 | fill `color/brand/{primary,hover,pressed}`＋Disabled `color/bg/soft`；text `color/text/inverted`／`color/text/disabled` | Body(14) **Bold** | `position_editor.py:285` `[码]` |
+| 2 | `Button/Secondary` | State=Default/Hover/Pressed | **r=16**, **pad 12×24**, fontSize 13 | fill `bg/soft`，border `border/default`，text `text/primary` | Secondary(13) | `settings.py:317` `[码]` |
+| 3 | `Button/Ghost` | State=Default/Hover | **r=16**, **pad 12×24** | fill `bg/soft`＋border `border/default`，hover `border/focus` | Body(14) | `position_editor.py:294` `[码]`（原为透明灰） |
 | 4 | `Pill/Tag` | State=Default/Selected | r=999, pad 3×12 | Default `bg/soft`+`text/secondary`；Selected `brand/soft`+`brand/text` | Caption(12) | `dashboard.py:311,780` `[码]` |
 | 5 | `Nav/SidebarItem` | State=Default/Hover/Active | r=10, pad 10×14, 外边距 2×12, 高 ≥40, icon 18 | Default 透明；Hover `bg/sidebar-hover`；Active `bg/sidebar-active`+`text/brand` | Secondary(13) **Medium** | `main_window.py:60-95` `[码]` |
 | 6 | `Tile/Quick` | State=Default/Hover | **46×46 正圆**（r=23）, icon 居中 | fill `brand/soft`；hover `bg/raised`+阴影 | 无（图标） | `dashboard.py:141-144` `[码]` |
@@ -44,8 +44,10 @@
 | 11 | `Control/Slider` | Part=填充段/Track/Knob | 轨高 6 r=3, 钮 14 | 填充 `brand/primary`；轨 `bg/soft` | — | `[待]` 同上 |
 | 12 | `Input/Number` | State=Default/Focus/Error | r=6, pad 8×12, **无 +/- 按钮** | fill `bg/soft`；border `border/default`→`border/focus` | Body(14) 纯文本 | `settings.py:306` `[码]`（`NoButtons` 口径见 `V1_REFACTOR_SPEC`） |
 
-> ⚠️ `Button/Primary`(r=6) 与 `Button/Secondary`(r=8) **圆角不一致**，是历史遗留：设置页的按钮与位置编辑弹窗的按钮是两套手写 QSS。
-> 这是 §4 的第 4 条不一致项，需要一次性统一（推荐统一到 `radius/sm = 6`）。
+> ✅ **圆角/内边距不一致已裁定**（2026-09-13）：三个按钮变体统一
+> `radius/button = 16` + `pad 12×24`（`BUTTON_PAD_V = space/3`、`BUTTON_PAD_H = space/6`）。
+> 代码侧已同步并像素验证（真机渲染实测圆角 ≈17.1px、高 42px、底色 `#26AE89` / `#F5EFE7`）。
+> **Figma 侧那个 `Button/Primary` 变体仍是 r6** —— 改它要再消耗额度，暂时留作已知偏差。
 
 ### 1.2 已落地（Figma）
 
@@ -76,9 +78,10 @@
 | 8 | PositionEditor | 遮罩暗化 + 前景可拖预览 + 取消/保存 + 提示条 | `CUE_POSITION` / `CUE_POS_X,Y` / `CUE_POS_MONITOR`；6 种预设 | `Button/Primary` + `Button/Ghost` |
 | 9 | VisualCue | 暖白底卡片 + 眼睛/植物元素 + 一行文字 | 触发层与强度：四类提示 × `CUE_SKIN`(3) × `CUE_INTENSITY`(3) | 独立（400×120） |
 
-> **区块 5 的口径注意**：`break_count` 在代码里是 `look_away + deep`，而区块同时**分列**显示远眺与长休。
-> 也就是说「休息次数」这个合计值没有独立数据源。**要么删掉合计，要么让 `get_today_summary` 分别返回 `look_away_count` / `deep_break_count`。**
-> 建议后者（数据更诚实），已列入 §4。
+> ✅ **区块 5 口径已裁定**（2026-09-13，采用"让数据更诚实"的方案）：`get_today_summary()` 现在
+> 分别返回 `look_away_count` / `deep_break_count`，`break_count` 作为合计口径保留给"总计"类调用方。
+> 修的过程中发现**当时三列全都是错的**：远眺列显示的是 `look_away + deep` 合计、活动列显示的是
+> `skipped_breaks`、长休列读的是一个从不递增的 UI 局部计数（恒为 0）。三列现已各取各的独立数据源。
 
 ---
 
@@ -109,16 +112,38 @@
 
 按严重度排序。**这些是"上 Figma"真正的产出**——把散落的硬编码暴露成可裁决的清单。
 
-| # | 项 | 现状 | 建议 | 状态 |
-|---|---|---|---|---|
-| 1 | PositionEditor 主按钮是**硬编码蓝** `#1976d2`/`#1565c0` | 与主色绿完全无关，是 V0.6 之前遗留 | 接 `PRIMARY`/`PRIMARY_HOVER`/`PRIMARY_PRESSED` | ✅ **本轮已修**（`position_editor.py:283-299`），像素验证 `#26AE89` + `#FFFFFF` |
-| 2 | PositionEditor 次按钮是半透明灰 `rgba(120,124,134,220)`（反白字） | 同上 | 改为 `bg/soft` + `border/default` + `text/primary` | ✅ **本轮已修**，像素验证 `#F5EFE7` + `#EAE0D2` |
-| 3 | 休息次数无独立数据源 | `break_count = look_away + deep`，但区块 5 又分列远眺与长休 | `get_today_summary` 增加 `look_away_count` / `deep_break_count` | ⏳ 待裁定 |
-| 4 | 两套按钮圆角（r=6 vs r=8） | `/ui/position_editor.py` r=6、`/ui/settings.py` r=8 | 统一到 `radius/sm = 6`，两处共用 `Button/Primary` 样式 | ⏳ 待裁定 |
-| 5 | 按钮内边距 `10×26` 不是 token 值 | 间距体系是 4/8/12/16/20/24/32/40，没有 26 | 对齐为 `space/3 × space/6`（12×24） | ⏳ 待裁定（改的是视觉，需你点头） |
-| 6 | PositionEditor 遮罩层调色板未 token 化 | 提示条 `#eaf4ff` / `rgba(20,24,34,210)`、圆角 10 | 新增 `overlay/*` token，或**明确豁免**（暗色遮罩本就该有独立调色板） | ⏳ 待裁定 |
+**裁定记录 2026-09-13**（用户逐条拍板）：
 
-> 第 5、6 条**不建议默默改**——它们会改变实际观感，属于产品决定不是工程决定。
+| # | 项 | 现状 | 裁定 | 状态 |
+|---|---|---|---|---|
+| 1 | PositionEditor 主按钮是**硬编码蓝** `#1976d2` | 与主色绿完全无关，是 V0.6 之前遗留 | 接 `PRIMARY`/`PRIMARY_HOVER`/`PRIMARY_PRESSED` | ✅ 已修，像素验证 `#26AE89` + `#FFFFFF` |
+| 2 | PositionEditor 次按钮是半透明灰 `rgba(120,124,134,220)`（反白字） | 同上 | 改为 `bg/soft` + `border/default` + `text/primary` | ✅ 已修，像素验证 `#F5EFE7` + `#EAE0D2` |
+| 3 | 休息次数无独立数据源 | `break_count = look_away + deep`，但区块 5 分列三列 | **采用"数据更诚实"方案**：`get_today_summary` 增 `look_away_count` / `deep_break_count` | ✅ 已落地，并修掉三列的取值错配 |
+| 4 | 两套按钮圆角（r=6 vs r=8） | `position_editor.py` r=6、`settings.py` r=8 | **统一 `r16`**（新增 `radius/button`） | ✅ 已落地，实测圆角 ≈17.1px |
+| 5 | 按钮内边距 `10×26` 不是 token 值 | 间距体系是 4/8/12/16/20/24/32/40，没有 26 | **用 24**：`space/3 × space/6`（12×24），新增 `space/button-v` / `space/button-h` | ✅ 已落地，实测按钮高 42px |
+| 6 | PositionEditor 遮罩层调色板未 token 化 | 提示条 `#eaf4ff`、遮罩 `rgba(10,12,18,120)`、圆角 10 | **完成 token 化**：新增 `color/overlay/{scrim,tip-bg,tip-text}`；圆角走 `radius/md` | ✅ 已落地（撤回原"建议豁免"） |
+| 7 | **提示卡文案实质不可见**（本轮新发现） | V0.6 暖色改版 `f487020` 把 `cueCard` 底从深色 `rgba(28,32,44,235)` 改成暖白 `rgba(255,250,242,240)`，但 `QLabel` 文字色仍留在 `#eaf4ff` → 近白压暖白，对比度约 **1.06:1** | 文字改用 `text/primary`（`#2D3748`，相对亮度 0.212） | ✅ 已修 + 新增可读性守门测试 |
+| 8 | 编辑预览与真实提示卡**不一致** | `visual_cue_preview.py` 仍是改版前的深色卡 + 蓝边，真实提示卡已是暖白 + 绿边 | 预览的意义就是"所见即所得"，**推荐改** | ⏳ 待裁定（改的是观感） |
+| 9 | 第三类按钮：小尺寸胶囊 | 设置页「▶ 试听」r6 / pad 4×14（`settings.py:492`）、休息全屏窗按钮 r6/r8（`break_window.py:217,534`），未列入 12 组件表 | 高度仅约 22px，**推荐不统一**到 r16（会变成全圆胶囊，与"次要小控件"层级不符） | ⏳ 待裁定 |
+
+> 第 8、9 条**不建议默默改**——它们会改变实际观感，属于产品决定不是工程决定。
+
+### 4.1 附注：遮罩 alpha 必须写 0-1 小数
+
+第 6 条落地时踩到一个**跨语言陷阱**，值得单独记：
+
+- Qt QSS 惯用的 `rgba(r, g, b, 120)`（alpha 取 0-255）**是 CSS 非法写法**。浏览器会把 >1 的 alpha
+  clamp 成 1 → 设计板里的遮罩会变成**纯黑**，而 Qt 侧一切正常 —— 设计源与实现就此静默漂移。
+- 实测（`.build/probe_rgba.py`，整窗合成后反解 alpha）：Qt 对 `120` / `0.47` / `47%` 三种写法
+  分别解析出 **0.469 / 0.465 / 0.469** —— 即**小数与百分比在两侧都合法**，0-255 整数不行。
+- 故 token 统一写小数：`OVERLAY_SCRIM_RGBA = (10, 12, 18, 0.471)`、`OVERLAY_TIP_BG_RGBA = (20, 24, 34, 0.824)`。
+- 分量单独存一份的原因：`QColor` **不认 CSS 的 `rgba()` 语法**
+  （实测 `QColor.fromString("rgba(10, 12, 18, 0.471)")` 返回 invalid）→ 由 `tokens.to_qcolor()` 走分量转换。
+
+### 4.2 附注：本文件里的行号是「当时」的
+
+`[码]` 锚点会随代码改动漂移。本轮改完 `position_editor.py` / `settings.py` 后已同步刷新
+（例：`_BUTTON_STYLE_PRIMARY` 从 283 → 285）。**引行号前先核对**，或改用符号名搜索。
 
 ---
 

@@ -216,7 +216,9 @@ class Dashboard(QWidget):
 
         self._rhythm_title: Optional[QLabel] = None
         self._rhythm_rows: dict[str, dict] = {}
-        self._natural_rest_count: int = 0
+        # 今日数据三列的取值标签由 legacy 别名暴露（见 _build_today_card）：
+        # ``_break_count_label`` → 远眺、``_skipped_label`` → 活动、``_natural_label`` → 长休。
+        # 三列各自取独立数据源，不再共用一个求和值。
 
         self.setup_ui()
         self._subscribe_events()
@@ -895,12 +897,15 @@ class Dashboard(QWidget):
         if self._blink_tile is not None:
             self._blink_tile.set_value(blink_value)
 
-        # 远眺 / 活动 / 长休（兼容旧属性）
-        break_count = int(summary.get("break_count", 0))
-        skipped = int(summary.get("skipped_breaks", 0))
-        self._break_count_label["value"].setText(str(break_count))
-        self._skipped_label["value"].setText(str(skipped))
-        self._natural_label["value"].setText(str(max(0, self._natural_rest_count)))
+        # 远眺 / 活动 / 长休 —— 三列各取独立数据源。
+        # 修复前：远眺显示"远眺+长休"的合计、活动显示"跳过次数"、长休读一个
+        # 从不递增的 UI 局部计数（恒为 0）。见 SPEC_COMPONENTS_AND_BLOCKS.md §4 第 3 条。
+        look_away_count = int(summary.get("look_away_count", 0))
+        deep_count = int(summary.get("deep_break_count", 0))
+        move_count = int(summary.get("move_count", 0))
+        self._break_count_label["value"].setText(str(look_away_count))   # 远眺
+        self._skipped_label["value"].setText(str(move_count))            # 活动
+        self._natural_label["value"].setText(str(deep_count))            # 长休
 
     # ------------------------------------------------------------------
     # 容错辅助

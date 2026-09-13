@@ -92,7 +92,7 @@ cd "G:/Open Code/apps/EyeRest"
    本项目的约定是底色 → `FRAME_FILL`+`SHAPE_FILL`、文字 → `TEXT_FILL`、
    描边 → `STROKE_COLOR`、间距/内边距 → `GAP`、圆角 → `CORNER_RADIUS`、
    窗口尺寸 → `WIDTH_HEIGHT`、字号 → `FONT_SIZE`。
-5. **阴影做不成变量**，只能用 effect style —— 所以 63 个 token 落到 Figma 是
+5. **阴影做不成变量**，只能用 effect style —— 所以 69 个 token 落到 Figma 是
    **60 个变量 + 3 个 effect style**。
 6. 每次 `use_figma` 最多切一次页；纯写变量时不需要切页（默认在第一页）。
 
@@ -132,7 +132,7 @@ cd "G:/Open Code/apps/EyeRest"
 | 3 | 插件里选 **New empty file** |
 | 4 | 左侧 **Settings → Storage Type → File** |
 | 5 | 点 **Load from File**，选本目录的 `tokens.json` |
-| 6 | 左侧应出现六组、共 **63 个 token** |
+| 6 | 左侧应出现六组、共 **69 个 token** |
 | 7 | **Styles & Variables** → **Export styles & variables to Figma** |
 | 8 | 若提示已存在同名变量，勾 **Update existing** |
 

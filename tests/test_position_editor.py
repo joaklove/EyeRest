@@ -43,6 +43,39 @@ class TestPositionEditor(unittest.TestCase):
         self.editor.deleteLater()
 
     # ------------------------------------------------------------------
+    # 设计系统一致性（§4 裁定：按钮 r16 + pad 12×24、遮罩调色板 token 化）
+    # ------------------------------------------------------------------
+    def test_buttons_use_unified_geometry_tokens(self) -> None:
+        """保存 / 取消按钮的圆角与内边距必须来自 token（r16 / 12×24）。"""
+        from app.ui.theme import tokens
+
+        for button in (self.editor._save_button, self.editor._cancel_button):
+            sheet = button.styleSheet()
+            self.assertIn(f"border-radius: {tokens.RADIUS_BUTTON}px", sheet)
+            self.assertIn(
+                f"padding: {tokens.BUTTON_PAD_V}px {tokens.BUTTON_PAD_H}px", sheet
+            )
+
+    def test_hint_uses_overlay_tokens(self) -> None:
+        """提示条配色必须来自 overlay token，不得留字面值。"""
+        from app.ui.theme import tokens
+
+        sheet = self.editor._hint.styleSheet()
+        self.assertIn(tokens.OVERLAY_TIP_TEXT, sheet)
+        self.assertIn(tokens.OVERLAY_TIP_BG, sheet)
+        self.assertNotIn("#eaf4ff", sheet)
+        self.assertNotIn("rgba(20, 24, 34, 210)", sheet)
+
+    def test_scrim_token_is_translucent_and_valid(self) -> None:
+        """遮罩填色能转成有效 QColor，且保持半透明（不是实心黑）。"""
+        from app.ui.theme import tokens
+
+        color = tokens.to_qcolor(tokens.OVERLAY_SCRIM_RGBA)
+        self.assertTrue(color.isValid())
+        self.assertLess(color.alphaF(), 1.0)
+        self.assertGreater(color.alphaF(), 0.0)
+
+    # ------------------------------------------------------------------
     # 架构约束（防止回退到旧的顶层窗口方案）
     # ------------------------------------------------------------------
     def test_preview_is_plain_child_widget(self) -> None:

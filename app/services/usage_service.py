@@ -133,8 +133,12 @@ class UsageService:
 
         Returns:
             包含 ``active_seconds`` / ``idle_seconds`` / ``break_count`` /
-            ``skipped_breaks`` / ``blink_cues`` / ``move_count`` /
-            ``session_count`` 的字典。
+            ``look_away_count`` / ``deep_break_count`` / ``skipped_breaks`` /
+            ``blink_cues`` / ``move_count`` / ``session_count`` 的字典。
+
+        注：``break_count`` 是 ``look_away_count + deep_break_count`` 的合计，
+        保留给"总计"口径的调用方；首页今日数据卡分列远眺 / 活动 / 长休三列，
+        应当各取各的独立计数（见 ``SPEC_COMPONENTS_AND_BLOCKS.md`` §4 第 3 条）。
         """
         try:
             today = self._store.today()
@@ -155,6 +159,8 @@ class UsageService:
             "active_seconds": stored_active,
             "idle_seconds": 0.0,
             "break_count": look_away + deep,
+            "look_away_count": look_away,
+            "deep_break_count": deep,
             "skipped_breaks": int(today.get("skipped_break", 0)),
             "blink_cues": int(today.get("blink_cue", 0)),
             "move_count": int(today.get("move", 0)),

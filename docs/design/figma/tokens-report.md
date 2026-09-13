@@ -2,16 +2,16 @@
 
 - 来源：`app/ui/theme/tokens.py`
 - 产出：`docs/design/figma/tokens.json`（Tokens Studio for Figma schema）
-- 变量总数：**63**（别名 8 + 字面值 55）
+- 变量总数：**69**（别名 10 + 字面值 59）
 
 ## 分组统计
 
 | 分组 | 变量数 |
 |---|---|
-| `color` | 35 |
-| `space` | 8 |
+| `color` | 38 |
+| `space` | 10 |
 | `font-size` | 7 |
-| `radius` | 5 |
+| `radius` | 6 |
 | `size` | 5 |
 | `shadow` | 3 |
 
@@ -27,6 +27,8 @@
 | `color.rhythm.blink` | `color.brand.primary` |
 | `color.rhythm.look` | `color.info.base` |
 | `color.rhythm.move` | `color.accent.deep` |
+| `space.button-v` | `space.3` |
+| `space.button-h` | `space.6` |
 
 ## 命名映射（Python 常量 → Figma 变量）
 
@@ -46,6 +48,9 @@ Python 侧的常量名不是好的变量名，导出时按语义重新分组。
 | `RHYTHM_BLINK/LOOK/MOVE/DEEP` | `color/rhythm/*` |
 | `SPACE_n` | `space/n` |
 | `RADIUS_*` | `radius/*` |
+| `RADIUS_BUTTON` | `radius/button`（§4 裁定：按钮统一 r16） |
+| `BUTTON_PAD_V/H` | `space/button-v`(→`space/3`) / `space/button-h`(→`space/6`) |
+| `OVERLAY_SCRIM/TIP_BG/TIP_TEXT` | `color/overlay/*`（alpha 用 0-1 小数） |
 | `DISPLAY/H1/H2/H3/BODY/SECONDARY/CAPTION` | `font-size/*` |
 | `SHADOW_*` | `shadow/*` |
 
