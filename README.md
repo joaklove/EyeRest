@@ -145,6 +145,13 @@ apps/EyeRest/
 - 五套合成音效，与提示强度联动
 - 测试基线：**567 passed + 3 subtests**
 
+## 安全与隐私
+
+- **绝不提交私密信息**：API 密钥、令牌、账号口令、个人路径、真实日志，一律不进版本库。
+- 新增含密钥的文件前，先确认它已被忽略：`git check-ignore -v <文件>`。
+- 提交前跑一次 `python tools/check_secrets.py`（默认扫暂存区）；也可 `python tools/check_secrets.py --install-hook` 装成 pre-commit 钩子，从此每次提交自动拦截。
+- 已经推到远端的密钥**等于已泄漏** —— 必须在平台侧吊销并重签，改写历史不算补救。
+
 ## 许可
 
-尚未指定开源许可。
+[MIT](LICENSE) © 2026 Jacklove

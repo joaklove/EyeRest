@@ -28,3 +28,19 @@ Thumbs.db
 # --- 本地复盘文档（仅本地留档，不发布到远端） ---
 docs/DEV_LESSONS.html
 docs/design/acceptance/DEV_LESSONS.png
+
+# --- 私密信息 / 凭据（绝不入库） ---
+# 提交前用 `python tools/check_secrets.py` 再扫一遍暂存区。
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.*
+credentials.*
+*_secret.*
+*_token.*
+local_settings.py
+mcp.local.json
