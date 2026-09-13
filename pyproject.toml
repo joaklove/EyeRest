@@ -1,6 +1,6 @@
 [project]
 name = "eyerest"
-version = "0.5.1"
+version = "0.6.3"
 description = "EyeRest - 屏幕使用节奏管理器（眨眼/远眺/活动/深度休息四层节奏）"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,5 +13,7 @@ build-backend = "setuptools.build_meta"
 
 [project.scripts]
 # 开发模式入口（python -m pip install -e . 后可用 `eyerest` 命令启动）
-# 发布 exe 请使用：pyinstaller EyeRest.spec --noconfirm
+# 打包便携版请使用：.venv\Scripts\python.exe tools\build_portable.py
+# 不要直接跑 `pyinstaller EyeRest.spec --noconfirm` —— 它会整个删掉 dist/EyeRest/，
+# 连带删掉 dist/EyeRest/data/ 里的用户数据与手工维护的 EyeRest-Portable.bat。
 eyerest = "app.main:main"

@@ -1,8 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 # EyeRest PyInstaller 打包配置（V1.0：One-dir 模式）
 #
-# 打包命令（在 apps/EyeRest 目录下，必须使用项目 venv）：
-#     .venv\Scripts\python.exe -m PyInstaller EyeRest.spec --noconfirm
+# 打包命令（在 apps/EyeRest 目录下）：
+#     .venv\Scripts\python.exe tools\build_portable.py
+#
+# 本 spec 由该脚本驱动：它在暂存目录构建、校验产物内版本与源码一致、启动冒烟、
+# 再与 dist/ 换位，并保住 dist/EyeRest/data/ 里的用户数据与手工维护的
+# EyeRest-Portable.bat。直接跑 `pyinstaller EyeRest.spec --noconfirm` 会先清空
+# dist/EyeRest/，上述数据与 bat 会一并丢失。
 #
 # 产物：dist/EyeRest/ 目录（EyeRest.exe + _internal/ 依赖文件夹）
 #
