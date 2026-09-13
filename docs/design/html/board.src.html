@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EyeRest 设计板 · 路线 C</title>
+<style>
+/* {{BRAND_FONT}} */
+
+/* {{TOKENS}} */
+
+/* ===================================================================
+   以下是设计板自身的排版，不属于产品 token 体系。
+   产品 UI 部分（.win 及其内部）只用上面的 var(--...)。
+   =================================================================== */
+* { box-sizing: border-box; }
+:root {
+  --font-ui: "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  --font-brand: "ZCOOL KuaiLe", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  --paper: #EDEAE4;
+  --paper-2: #E4E0D9;
+  --paper-line: #DCD6CC;
+  --mark-bg: #FCEBEB; --mark-fg: #791F1F; --mark-bd: #F7C1C1;
+  --ok-bg: #EAF3DE;   --ok-fg: #27500A;   --ok-bd: #C0DD97;
+  --warn-bg: #FBF3E2; --warn-fg: #6B4B12; --warn-bd: #EBD3A6;
+}
+html, body { margin: 0; }
+body {
+  padding: 28px 20px 80px;
+  background: var(--paper);
+  font-family: var(--font-ui);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1000px; margin: 0 auto; }
+
+/* ---------------- 页头 ---------------- */
+.head h1 { font-size: 26px; margin: 8px 0 8px; font-weight: 600; letter-spacing: .3px; }
+.head-badge {
+  display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .6px;
+  color: var(--color-text-brand); background: var(--color-brand-soft);
+  border-radius: var(--radius-pill); padding: 3px 11px;
+}
+.head-sub { font-size: 13px; color: var(--color-text-secondary); line-height: 1.8; margin: 0; max-width: 850px; }
+.head-sub code { background: #fff; border: 1px solid var(--color-border-default); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+.head-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.chipm {
+  font-size: 12px; color: var(--color-text-secondary); background: #fff;
+  border: 1px solid var(--color-border-default); border-radius: var(--radius-pill); padding: 3px 11px;
+}
+.chipm b { color: var(--color-text-primary); }
+
+/* ---------------- 章节 ---------------- */
+.sec { margin-top: 36px; }
+.sec-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.sec-h h2 { font-size: 17px; margin: 0; font-weight: 600; }
+.sec-h .blk-n { font-size: 11px; font-weight: 600; color: var(--color-text-brand); background: var(--color-brand-soft); border-radius: var(--radius-pill); padding: 2px 9px; }
+.sec-note { font-size: 12.5px; color: var(--color-text-secondary); margin: 0 0 14px; line-height: 1.75; }
+.sec-note code { background: #fff; border: 1px solid var(--color-border-default); border-radius: 4px; padding: 1px 4px; font-size: 12px; }
+.stage {
+  background: var(--paper-2); border: 1px solid var(--paper-line);
+  border-radius: 18px; padding: 20px; display: flex; gap: 18px;
+  flex-wrap: wrap; justify-content: center; align-items: flex-start;
+}
+
+/* ---------------- 窗口外壳 ---------------- */
+.win {
+  width: var(--size-window-default-w);
+  background: var(--color-bg-canvas);
+  border: 1px solid var(--color-border-default);
+  border-radius: 18px; overflow: hidden; display: flex;
+  box-shadow: 0 14px 36px rgba(45, 55, 72, .14);
+}
+.win-auto { min-height: var(--size-window-default-h); height: auto; align-items: stretch; }
+.win-fixed { height: var(--size-window-default-h); }
+
+/* ---------------- 区块 1 · Sidebar ---------------- */
+.sb {
+  width: var(--size-sidebar-width); flex: 0 0 var(--size-sidebar-width);
+  background: var(--color-bg-sidebar); padding: 20px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sb-brand { display: flex; align-items: center; gap: 8px; padding: 0 12px 20px; }
+.sb-mark {
+  width: 36px; height: 36px; border-radius: 50%; background: #fff;
+  display: grid; place-items: center; box-shadow: var(--shadow-card); flex: none;
+}
+.sb-name { font-family: var(--font-brand); font-size: 18px; letter-spacing: .4px; }
+.sb-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: var(--radius-md); font-size: 13px; font-weight: 500;
+  color: var(--color-text-secondary); cursor: default;
+  transition: background-color .15s ease;
+}
+.sb-item:hover { background: var(--color-bg-sidebar-hover); }
+.sb-item.is-active {
+  background: var(--color-bg-sidebar-active); color: var(--color-text-brand);
+  font-weight: 600; box-shadow: var(--shadow-card);
+}
+.sb-foot {
+  margin-top: auto; padding: 12px; font-size: var(--font-size-caption);
+  color: var(--color-text-muted); display: flex; align-items: center; gap: 6px;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-brand-primary); flex: none; }
+.dot.paused { background: var(--color-status-warning); }
+.ic { width: 18px; height: 18px; flex: none; display: block; }
+.ic24 { width: 24px; height: 24px; display: block; }
+
+/* ---------------- 内容列 ---------------- */
+.ct { flex: 1; min-width: 0; padding: 22px 30px 26px; display: flex; flex-direction: column; gap: 16px; }
+.blk-t { font-size: var(--font-size-h3); font-weight: 600; margin: 0; }
+
+/* 区块 2 · Hero */
+.hero {
+  position: relative; display: flex; justify-content: space-between; gap: 20px;
+  background: linear-gradient(135deg, #FFF7EC 0%, #FDF2E6 100%);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-xl); padding: 18px 20px; overflow: hidden;
+}
+.hero-plant {
+  position: absolute; right: -6px; bottom: -14px; width: 104px; height: 104px;
+  opacity: .38; pointer-events: none;
+}
+.hero-left { display: flex; align-items: center; gap: 14px; position: relative; }
+.hero-eye { width: 62px; height: 62px; flex: none; }
+.hero-title { font-family: var(--font-brand); font-size: var(--font-size-display); font-weight: 400; margin: 0; letter-spacing: .5px; line-height: 1.15; }
+.hero-sub { font-size: var(--font-size-secondary); color: var(--color-text-secondary); margin: 4px 0 8px; }
+.hero-pill {
+  display: inline-block; font-size: var(--font-size-caption); font-weight: 500;
+  color: var(--color-text-brand); background: rgba(255, 255, 255, .82);
+  border: 1px solid var(--color-border-soft); border-radius: var(--radius-pill); padding: 3px 11px;
+}
+.rhythm-mini {
+  position: relative; flex: none; width: 168px; background: rgba(255, 255, 255, .72);
+  border: 1px solid var(--color-border-soft); border-radius: var(--radius-lg); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.rm-row { display: flex; align-items: center; gap: 7px; font-size: var(--font-size-caption); color: var(--color-text-secondary); }
+.rm-row i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.rm-row span { flex: 1; }
+.rm-row b { color: var(--color-text-primary); font-weight: 600; }
+.rm-row.off b { color: var(--color-text-disabled); font-weight: 400; }
+
+/* 区块 3 · 当前状态卡 */
+.card {
+  background: var(--color-bg-surface); border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-xl); padding: 18px 22px; box-shadow: var(--shadow-card);
+}
+.status { display: flex; align-items: center; gap: 18px; }
+.status .kicker { font-size: var(--font-size-secondary); color: var(--color-text-secondary); margin: 0 0 2px; }
+.status .count {
+  font-family: var(--font-brand); font-size: 34px; line-height: 1.1;
+  color: var(--color-text-brand); margin: 0 0 4px; letter-spacing: 1px;
+}
+.status .copy { font-size: var(--font-size-caption); color: var(--color-text-muted); margin: 0; }
+.status-art { width: 84px; height: 84px; flex: none; margin-left: auto; }
+
+/* 区块 4 · 快捷设置 */
+.tiles { display: flex; gap: 6px; }
+.tile { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 2px; border-radius: var(--radius-md); }
+.tile:hover { background: rgba(255, 255, 255, .66); }
+.tile-chip {
+  width: 46px; height: 46px; border-radius: 23px; background: var(--color-brand-soft);
+  display: grid; place-items: center;
+}
+.tile-l { font-size: var(--font-size-caption); font-weight: 500; }
+.tile-v { font-size: var(--font-size-caption); color: var(--color-text-secondary); }
+
+/* 区块 5 · 今日数据 */
+.stats { display: flex; gap: 10px; }
+.stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.stat-ic { width: 24px; height: 24px; }
+.stat-v { font-size: var(--font-size-body); font-weight: 600; color: var(--c); white-space: nowrap; }
+.stat-v i { font-size: var(--font-size-caption); font-weight: 400; font-style: normal; color: var(--color-text-secondary); margin: 0 1px; }
+.stat-l { font-size: var(--font-size-caption); color: var(--color-text-secondary); }
+
+/* 区块 6 · 引言卡 */
+.quote { display: flex; align-items: center; gap: 14px; padding: 16px 22px; }
+.q-ic { width: 44px; height: 44px; flex: none; }
+.quote p { margin: 0; font-size: var(--font-size-body); color: var(--color-text-secondary); line-height: 1.7; }
+.quote em { font-style: normal; color: var(--color-text-brand); }
+
+/* ---------------- 区块 7 · Settings 2×2 ---------------- */
+.sgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.rcard {
+  background: var(--color-bg-surface); border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.rcard-h { display: flex; align-items: center; gap: 8px; }
+.rbar { width: 4px; height: 18px; border-radius: var(--radius-pill); background: var(--c); flex: none; }
+.r-ic { width: 20px; height: 20px; flex: none; }
+.rcard-h b { font-size: var(--font-size-h3); font-weight: 600; }
+.rcard-h .sw { margin-left: auto; }
+.r-desc { font-size: var(--font-size-caption); color: var(--color-text-secondary); margin: 0; }
+.r-fields { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.fld { display: flex; align-items: center; gap: 6px; font-size: var(--font-size-caption); color: var(--color-text-secondary); }
+.rcard.off { background: var(--color-bg-soft); box-shadow: none; }
+.rcard.off .r-desc, .rcard.off .fld { color: var(--color-text-disabled); }
+.srow { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--color-border-soft); }
+.srow:last-child { border-bottom: none; }
+.srow .s-l { flex: 1; font-size: var(--font-size-secondary); }
+.prow { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--color-border-soft); }
+.prow:last-child { border-bottom: none; }
+.prow .p-l { width: 66px; flex: none; font-size: var(--font-size-secondary); }
+.prow .p-set { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------------- 控件 ---------------- */
+.num {
+  width: 62px; height: 30px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-default); background: var(--color-bg-soft);
+  font: inherit; font-size: var(--font-size-secondary); color: var(--color-text-primary);
+  text-align: center; padding: 0 8px;
+}
+.num:focus { outline: none; border-color: var(--color-border-focus); background: #fff; box-shadow: var(--shadow-focus); }
+.num.err { border-color: var(--color-status-danger); box-shadow: 0 0 0 3px rgba(229, 125, 125, .22); }
+.num:disabled { color: var(--color-text-disabled); }
+
+.btn {
+  font: inherit; font-size: var(--font-size-body); font-weight: 600;
+  border: none; cursor: default; border-radius: var(--radius-sm);
+  padding: 10px 26px; transition: background-color .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.btn-primary { background: var(--color-brand-primary); color: var(--color-text-inverted); }
+.btn-primary:hover { background: var(--color-brand-hover); }
+.btn-primary:active { background: var(--color-brand-pressed); }
+.btn-primary:disabled { background: var(--color-bg-soft); color: var(--color-text-disabled); }
+.btn-secondary {
+  background: var(--color-bg-soft); color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default); font-size: var(--font-size-secondary); padding: 8px 26px;
+}
+.btn-secondary:hover { border-color: var(--color-brand-primary); color: var(--color-text-brand); }
+.btn-secondary:active { background: var(--color-border-soft); }
+.btn-ghost {
+  background: var(--color-bg-soft); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-default); font-weight: 400; padding: 10px 22px;
+}
+.btn-ghost:hover { border-color: var(--color-border-focus); color: var(--color-text-brand); }
+
+.sw {
+  width: 44px; height: 24px; border-radius: var(--radius-pill);
+  background: var(--color-brand-soft); position: relative; display: inline-block; flex: none;
+}
+.sw::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(45, 55, 72, .28);
+  transition: left .18s ease;
+}
+.sw.on { background: var(--color-brand-primary); }
+.sw.on::after { left: 23px; }
+.sw.dis { background: var(--color-bg-soft); }
+.sw.dis::after { background: var(--color-border-default); box-shadow: none; }
+
+.sl { width: 150px; height: 6px; border-radius: 3px; background: var(--color-bg-soft); position: relative; }
+.sl i { position: absolute; inset: 0 auto 0 0; height: 6px; border-radius: 3px; background: var(--color-brand-primary); }
+.sl b {
+  position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--color-brand-primary); transform: translate(-50%, -50%);
+}
+
+.pill {
+  display: inline-flex; align-items: center; font-size: var(--font-size-caption);
+  border-radius: var(--radius-pill); padding: 3px 12px;
+  background: var(--color-bg-soft); color: var(--color-text-secondary);
+}
+.pill.sel { background: var(--color-brand-soft); color: var(--color-text-brand); font-weight: 500; }
+
+/* ---------------- 区块 8 · PositionEditor ---------------- */
+.editor { position: relative; }
+.ed-mask {
+  position: absolute; inset: 0; background: rgba(20, 24, 34, .78);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+}
+.ed-cue {
+  width: 300px; padding: 14px 18px; border-radius: var(--radius-lg);
+  background: var(--color-bg-surface); border: 2px dashed var(--color-brand-primary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35); position: relative;
+}
+.ed-cue::after {
+  content: "可拖动"; position: absolute; top: -11px; left: 12px; font-size: 11px;
+  color: var(--color-text-inverted); background: var(--color-brand-primary);
+  border-radius: var(--radius-pill); padding: 1px 8px;
+}
+.ed-cue p { margin: 0; font-size: var(--font-size-body); color: var(--color-text-primary); }
+.ed-panel {
+  width: 380px; background: var(--color-bg-surface); border-radius: var(--radius-xl);
+  padding: 20px 22px; box-shadow: 0 18px 44px rgba(0, 0, 0, .34);
+}
+.ed-panel .t { font-size: var(--font-size-h2); font-weight: 600; margin: 0 0 4px; }
+.ed-panel .s { font-size: var(--font-size-caption); color: var(--color-text-secondary); margin: 0 0 14px; }
+.ed-hint {
+  font-size: var(--font-size-caption); color: var(--color-text-brand);
+  background: var(--color-brand-soft); border-radius: var(--radius-md); padding: 8px 12px; margin-bottom: 16px;
+}
+.ed-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ---------------- 区块 9 · VisualCue ---------------- */
+.cue {
+  width: 400px; height: 120px; position: relative; overflow: hidden;
+  border-radius: var(--radius-xl); background: #FFFBF4;
+  border: 1px solid var(--color-border-soft); box-shadow: var(--shadow-raised);
+  display: flex; align-items: center; gap: 14px; padding: 0 24px;
+}
+.cue-plant { position: absolute; right: -10px; bottom: -18px; width: 96px; height: 96px; opacity: .3; }
+.cue-ic { width: 40px; height: 40px; flex: none; position: relative; }
+.cue p { margin: 0; font-size: var(--font-size-h3); font-weight: 600; position: relative; }
+.cue small { display: block; font-size: var(--font-size-caption); color: var(--color-text-secondary); font-weight: 400; margin-top: 2px; }
+
+/* ---------------- 状态画廊 ---------------- */
+.gal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.gcell {
+  background: #fff; border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.gcell h4 { margin: 0; font-size: var(--font-size-secondary); font-weight: 600; }
+.gcell .gnote { margin: 0; font-size: 11.5px; color: var(--color-text-secondary); line-height: 1.65; }
+.gbody { background: var(--color-bg-canvas); border: 1px solid var(--color-border-soft); border-radius: var(--radius-md); padding: 12px; }
+.zoom125 { transform: scale(1.25); transform-origin: top left; width: 80%; }
+
+/* ---------------- 组件库 ---------------- */
+.specs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.spec {
+  background: #fff; border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg); padding: 14px 16px;
+}
+.spec dt { font-size: var(--font-size-secondary); font-weight: 600; margin: 0 0 2px; }
+.spec .anchor { font-size: 11px; color: var(--color-text-muted); margin: 0 0 10px; }
+.spec .anchor code { background: var(--color-bg-soft); border-radius: 3px; padding: 0 4px; }
+.spec .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.spec .lab { font-size: 11px; color: var(--color-text-muted); align-self: center; }
+
+/* ---------------- 标注徽章 ---------------- */
+.tag {
+  display: inline-block; font-size: 11px; line-height: 1.5; padding: 2px 8px;
+  border-radius: var(--radius-pill); background: var(--mark-bg); color: var(--mark-fg);
+  border: 1px solid var(--mark-bd); vertical-align: middle; white-space: nowrap;
+}
+.tag.ok { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-bd); }
+.tag.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bd); }
+.legend {
+  background: #fff; border-radius: var(--radius-lg); border: 1px solid var(--color-border-default);
+  padding: 20px 24px; margin-top: 14px;
+}
+.legend h3 { font-size: var(--font-size-h3); margin: 0 0 6px; }
+.legend p { font-size: 12.5px; color: var(--color-text-secondary); margin: 0 0 14px; line-height: 1.7; }
+.legend table { width: 100%; border-collapse: collapse; font-size: var(--font-size-secondary); }
+.legend th, .legend td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--color-border-soft); vertical-align: top; }
+.legend th { color: var(--color-text-secondary); font-weight: 600; }
+.legend tr:last-child td { border-bottom: none; }
+.legend code { font-size: 12px; background: var(--color-bg-soft); padding: 1px 5px; border-radius: 4px; }
+.foot { margin-top: 34px; font-size: 12.5px; color: var(--color-text-secondary); line-height: 1.9; }
+.foot pre {
+  background: #fff; border: 1px solid var(--color-border-default); border-radius: var(--radius-md);
+  padding: 12px 14px; font-size: 12px; overflow-x: auto; margin: 8px 0 0; color: var(--color-text-primary);
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== 插画 sprite（真实资产，来自 app/assets/illustrations/） ==================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-logo" viewBox="0 0 48 48">
+    <path d="M6,24 Q24,7 42,24 Q24,38 6,24 Z" fill="#FFFFFF" stroke="#1f7a61" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="24" cy="23" r="8" fill="#26ae89"/><circle cx="24" cy="23" r="3.6" fill="#24313F"/>
+    <circle cx="21.4" cy="20.4" r="1.9" fill="#FFFFFF"/>
+  </symbol>
+  <symbol id="i-home" viewBox="0 0 32 32">
+    <g fill="none" stroke="#667B83" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6,15 L16,6 L26,15"/><path d="M9,13.5 L9,26 L23,26 L23,13.5"/><path d="M13.5,26 L13.5,19 L18.5,19 L18.5,26"/>
+    </g><circle cx="25.5" cy="6.5" r="2.4" fill="#26ae89"/>
+  </symbol>
+  <symbol id="i-settings" viewBox="0 0 32 32">
+    <g fill="none" stroke="#667B83" stroke-width="2.4" stroke-linecap="round">
+      <line x1="16" y1="3.5" x2="16" y2="7.5"/><line x1="16" y1="24.5" x2="16" y2="28.5"/>
+      <line x1="3.5" y1="16" x2="7.5" y2="16"/><line x1="24.5" y1="16" x2="28.5" y2="16"/>
+      <line x1="7.4" y1="7.4" x2="10.2" y2="10.2"/><line x1="21.8" y1="21.8" x2="24.6" y2="24.6"/>
+      <line x1="24.6" y1="7.4" x2="21.8" y2="10.2"/><line x1="10.2" y1="21.8" x2="7.4" y2="24.6"/>
+    </g><circle cx="16" cy="16" r="6.4" fill="none" stroke="#667B83" stroke-width="2.6"/>
+    <circle cx="16" cy="16" r="2.2" fill="#26ae89"/>
+  </symbol>
+  <symbol id="i-stats" viewBox="0 0 32 32">
+    <g stroke-linecap="round">
+      <line x1="9" y1="26" x2="9" y2="16" stroke="#26ae89" stroke-width="4.4"/>
+      <line x1="16" y1="26" x2="16" y2="8" stroke="#F4B570" stroke-width="4.4"/>
+      <line x1="23" y1="26" x2="23" y2="13" stroke="#5BA8D6" stroke-width="4.4"/>
+    </g><line x1="5" y1="27.5" x2="27" y2="27.5" stroke="#667B83" stroke-width="2.4" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-about" viewBox="0 0 32 32">
+    <circle cx="16" cy="16" r="11.5" fill="none" stroke="#667B83" stroke-width="2.6"/>
+    <circle cx="16" cy="10.6" r="2" fill="#26ae89"/>
+    <line x1="16" y1="14.6" x2="16" y2="22.4" stroke="#667B83" stroke-width="2.8" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-plant" viewBox="0 0 120 120">
+    <path d="M28,104 C40,78 52,58 84,24" fill="none" stroke="#1fa37e" stroke-width="4" stroke-linecap="round"/>
+    <path d="M56,62 C44,58 38,48 38,38 C50,40 58,48 60,58 Z" fill="#26ae89"/>
+    <path d="M40,84 C28,80 22,70 22,60 C34,62 42,70 44,80 Z" fill="#7fdbc2"/>
+    <path d="M66,46 C68,34 76,26 88,24 C88,36 80,46 70,50 Z" fill="#26ae89"/>
+    <path d="M52,74 C54,62 62,54 74,52 C74,64 66,74 56,78 Z" fill="#7fdbc2"/>
+    <circle cx="88" cy="22" r="7" fill="#FFD9AB"/><circle cx="88" cy="22" r="2.6" fill="#F4B570"/>
+  </symbol>
+  <symbol id="i-mascot" viewBox="0 0 120 120">
+    <circle cx="60" cy="60" r="54" fill="#ddf5ee"/>
+    <circle cx="30" cy="26" r="14" fill="#2D3748"/><circle cx="90" cy="26" r="14" fill="#2D3748"/>
+    <circle cx="30" cy="26" r="6" fill="#4A5568"/><circle cx="90" cy="26" r="6" fill="#4A5568"/>
+    <ellipse cx="60" cy="62" rx="38" ry="34" fill="#FFFFFF" stroke="#2D3748" stroke-width="3"/>
+    <ellipse cx="42" cy="56" rx="9" ry="11" fill="#2D3748" transform="rotate(-12 42 56)"/>
+    <ellipse cx="78" cy="56" rx="9" ry="11" fill="#2D3748" transform="rotate(12 78 56)"/>
+    <path d="M38,56 Q42,52 46,56" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M74,56 Q78,52 82,56" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+    <ellipse cx="60" cy="70" rx="4" ry="3" fill="#2D3748"/>
+    <path d="M54,78 Q60,83 66,78" fill="none" stroke="#2D3748" stroke-width="2.4" stroke-linecap="round"/>
+    <ellipse cx="30" cy="70" rx="6" ry="3.4" fill="#FFD9AB"/><ellipse cx="90" cy="70" rx="6" ry="3.4" fill="#FFD9AB"/>
+  </symbol>
+  <symbol id="i-eye" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="92" fill="#FFF7EC"/><circle cx="100" cy="100" r="92" fill="none" stroke="#FFE8CC" stroke-width="3"/>
+    <g stroke="#2D3748" stroke-width="5" stroke-linecap="round">
+      <line x1="100" y1="46" x2="100" y2="34"/><line x1="64" y1="58" x2="57" y2="48"/><line x1="136" y1="58" x2="143" y2="48"/>
+      <line x1="38" y1="84" x2="27" y2="79"/><line x1="162" y1="84" x2="173" y2="79"/>
+    </g>
+    <path d="M28,108 Q100,42 172,108 Q100,158 28,108 Z" fill="#FFFFFF" stroke="#2D3748" stroke-width="6" stroke-linejoin="round"/>
+    <clipPath id="eyeClip"><path d="M28,108 Q100,42 172,108 Q100,158 28,108 Z"/></clipPath>
+    <g clip-path="url(#eyeClip)">
+      <circle cx="100" cy="102" r="32" fill="#26ae89"/><circle cx="100" cy="102" r="32" fill="none" stroke="#30ad8b" stroke-width="3"/>
+      <circle cx="100" cy="102" r="14" fill="#24313F"/>
+      <circle cx="89" cy="90" r="7" fill="#FFFFFF"/><circle cx="113" cy="114" r="3.5" fill="#FFFFFF" opacity="0.75"/>
+    </g>
+    <ellipse cx="46" cy="136" rx="10" ry="5" fill="#FFD9AB" opacity="0.9"/><ellipse cx="154" cy="136" rx="10" ry="5" fill="#FFD9AB" opacity="0.9"/>
+  </symbol>
+  <symbol id="i-blink" viewBox="0 0 48 48">
+    <g stroke="#1fa37e" stroke-width="3.6" stroke-linecap="round" fill="none">
+      <path d="M8,26 Q24,38 40,26"/><line x1="13" y1="34" x2="11" y2="38"/>
+      <line x1="24" y1="36" x2="24" y2="41"/><line x1="35" y1="34" x2="37" y2="38"/>
+    </g>
+    <g stroke="#26ae89" stroke-width="2.6" stroke-linecap="round"><line x1="38" y1="10" x2="38" y2="16"/><line x1="35" y1="13" x2="41" y2="13"/></g>
+    <circle cx="10" cy="12" r="2.4" fill="#FFD9AB"/>
+  </symbol>
+  <symbol id="i-look" viewBox="0 0 48 48">
+    <circle cx="35" cy="12" r="5" fill="#FFD9AB"/>
+    <g stroke="#F4B570" stroke-width="2" stroke-linecap="round">
+      <line x1="35" y1="3.5" x2="35" y2="5.5"/><line x1="43.5" y1="12" x2="45.5" y2="12"/><line x1="41" y1="6" x2="42.4" y2="4.6"/>
+    </g>
+    <path d="M5,27 Q20,13 35,27 Q20,38 5,27 Z" fill="#FFFFFF" stroke="#5BA8D6" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="26" cy="25" r="6" fill="#5BA8D6"/><circle cx="24" cy="23" r="2" fill="#FFFFFF"/>
+    <path d="M6,42 L14,32 L20,40 L26,33 L34,42 Z" fill="#A8CDEB"/>
+  </symbol>
+  <symbol id="i-move" viewBox="0 0 48 48">
+    <circle cx="28" cy="9" r="5" fill="#F4B570"/>
+    <g stroke="#E89B4E" stroke-width="3.6" stroke-linecap="round" fill="none">
+      <path d="M27,16 L24,27 L17,36"/><path d="M24,27 L32,32 L33,41"/><path d="M26,19 L35,24 L41,22"/><path d="M26,20 L18,24 L13,30"/>
+    </g>
+    <circle cx="8" cy="42" r="2.2" fill="#FFD9AB"/><circle cx="43" cy="38" r="2" fill="#26ae89"/>
+  </symbol>
+  <symbol id="i-deep" viewBox="0 0 48 48">
+    <path d="M30,6 A16,16 0 1,0 42,26 A13,13 0 0,1 30,6 Z" fill="#B59CE0" stroke="#9A7ECF" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M10,12 l1.6,3.4 3.4,1.6 -3.4,1.6 -1.6,3.4 -1.6,-3.4 -3.4,-1.6 3.4,-1.6 Z" fill="#FFD9AB"/>
+    <circle cx="16" cy="36" r="2.2" fill="#D9C9F2"/><circle cx="8" cy="26" r="1.6" fill="#D9C9F2"/>
+  </symbol>
+  <symbol id="i-intensity" viewBox="0 0 48 48">
+    <g stroke-width="3.6" stroke-linecap="round">
+      <line x1="8" y1="14" x2="40" y2="14" stroke="#D9E6EC"/><line x1="8" y1="24" x2="40" y2="24" stroke="#D9E6EC"/>
+      <line x1="8" y1="34" x2="40" y2="34" stroke="#D9E6EC"/>
+    </g>
+    <circle cx="30" cy="14" r="5" fill="#26ae89" stroke="#30ad8b" stroke-width="2"/>
+    <circle cx="16" cy="24" r="5" fill="#F4B570" stroke="#E89B4E" stroke-width="2"/>
+    <circle cx="34" cy="34" r="5" fill="#5BA8D6" stroke="#4A94C4" stroke-width="2"/>
+  </symbol>
+  <symbol id="i-position" viewBox="0 0 48 48">
+    <path d="M24,5 C15.7,5 9,11.7 9,20 C9,31 24,43 24,43 C24,43 39,31 39,20 C39,11.7 32.3,5 24,5 Z" fill="#26ae89" stroke="#30ad8b" stroke-width="2.6" stroke-linejoin="round"/>
+    <circle cx="24" cy="19.5" r="6" fill="#FFFFFF"/><ellipse cx="24" cy="44" rx="8" ry="2.4" fill="#ddf5ee"/>
+  </symbol>
+  <symbol id="i-sound" viewBox="0 0 48 48">
+    <path d="M24,6 C17,6 12,11.5 12,19 L12,27 L8,33 L40,33 L36,27 L36,19 C36,11.5 31,6 24,6 Z" fill="#FFD9AB" stroke="#E8A94E" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M19,36 A5,5 0 0,0 29,36 Z" fill="#E8A94E"/><circle cx="24" cy="5" r="3" fill="#E8A94E"/>
+    <path d="M31,14 A8,8 0 0,1 33,19" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-more" viewBox="0 0 48 48">
+    <g fill="none" stroke="#8A97A0" stroke-width="4" stroke-linecap="round">
+      <line x1="24" y1="4" x2="24" y2="10"/><line x1="24" y1="38" x2="24" y2="44"/>
+      <line x1="4" y1="24" x2="10" y2="24"/><line x1="38" y1="24" x2="44" y2="24"/>
+      <line x1="10" y1="10" x2="14.4" y2="14.4"/><line x1="33.6" y1="33.6" x2="38" y2="38"/>
+      <line x1="38" y1="10" x2="33.6" y2="14.4"/><line x1="14.4" y1="33.6" x2="10" y2="38"/>
+    </g><circle cx="24" cy="24" r="10" fill="#8A97A0"/><circle cx="24" cy="24" r="4.2" fill="#FBF5EF"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 48 48">
+    <circle cx="24" cy="25" r="17" fill="#FFF3E2" stroke="#F4B570" stroke-width="3"/>
+    <g stroke="#E89B4E" stroke-width="3" stroke-linecap="round"><line x1="24" y1="25" x2="24" y2="15"/><line x1="24" y1="25" x2="31" y2="29"/></g>
+    <circle cx="24" cy="25" r="2.2" fill="#E89B4E"/>
+    <line x1="36" y1="8" x2="40" y2="12" stroke="#26ae89" stroke-width="2.6" stroke-linecap="round"/>
+  </symbol>
+</defs></svg>
+
+<div class="wrap">
+
+<header class="head">
+  <span class="head-badge">路线 C · HTML 设计板</span>
+  <h1>EyeRest 设计板</h1>
+  <p class="head-sub">
+    单文件 HTML + CSS 变量。<code>app/ui/theme/tokens.py</code> 的 <b>63 个 token</b> 与品牌圆体
+    （站酷快乐体）均已内联进本文件 —— <b>零外部依赖，双击即可打开</b>。
+    本板上出现的每一个数值都能追回真实数据源，与 Qt 实现共用同一份真源。
+  </p>
+  <div class="head-meta">
+    <span class="chipm"><b>窗口</b> 900 × 680</span>
+    <span class="chipm"><b>token</b> 63 个（含 3 阴影）</span>
+    <span class="chipm"><b>组件</b> 12</span>
+    <span class="chipm"><b>区块</b> 9</span>
+    <span class="chipm"><b>插画</b> 17 个真实 SVG</span>
+    <span class="chipm"><b>主色</b> #26AE89</span>
+  </div>
+</header>
+
+<!-- ================================================================= -->
+<section class="sec">
+  <div class="sec-h"><h2>首页 · 主窗口 900×680</h2><span class="blk-n">区块 1–6</span></div>
+  <p class="sec-note">
+    六个区块在真实窗口尺寸下叠放。窗口高度设为「680 起、内容超出则增高」，
+    以便一屏看全 —— 真实应用里内容列是滚动的。
+  </p>
+  <div class="stage">
+    <div class="win win-auto">
+
+      <!-- 区块 1 · Sidebar -->
+      <aside class="sb">
+        <div class="sb-brand">
+          <span class="sb-mark"><svg class="ic24"><use href="#i-logo"/></svg></span>
+          <span class="sb-name">EyeRest</span>
+        </div>
+        <div class="sb-item is-active"><svg class="ic"><use href="#i-home"/></svg>首页</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-settings"/></svg>设置</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-stats"/></svg>统计</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-about"/></svg>关于</div>
+        <div class="sb-foot"><span class="dot"></span>护眼中 · v0.6.3</div>
+      </aside>
+
+      <main class="ct">
+
+        <!-- 区块 2 · Hero -->
+        <section class="hero">
+          <svg class="hero-plant"><use href="#i-plant"/></svg>
+          <div class="hero-left">
+            <svg class="hero-eye"><use href="#i-eye"/></svg>
+            <div>
+              <h2 class="hero-title">今天也要好好护眼</h2>
+              <p class="hero-sub">屏幕暴露中 · 已连续陪伴 47 分钟</p>
+              <span class="hero-pill">专注 3 小时 42 分</span>
+            </div>
+          </div>
+          <div class="rhythm-mini">
+            <div class="rm-row"><i style="background:var(--color-rhythm-blink)"></i><span>眨眼</span><b>60s</b></div>
+            <div class="rm-row"><i style="background:var(--color-rhythm-look)"></i><span>远眺</span><b>20min</b></div>
+            <div class="rm-row"><i style="background:var(--color-rhythm-move)"></i><span>活动</span><b>45min</b></div>
+            <div class="rm-row"><i style="background:var(--color-rhythm-deep)"></i><span>长休</span><b>90min</b></div>
+          </div>
+        </section>
+
+        <!-- 区块 3 · 当前状态卡 -->
+        <section class="card status">
+          <div>
+            <p class="kicker">下一次提醒：远眺放松</p>
+            <p class="count">08:12</p>
+            <p class="copy">到点我会轻轻提醒你，看一眼窗外就好。</p>
+          </div>
+          <svg class="status-art"><use href="#i-mascot"/></svg>
+        </section>
+
+        <!-- 区块 4 · 快捷设置 -->
+        <section>
+          <h3 class="blk-t" style="margin-bottom:8px">快捷设置</h3>
+          <div class="tiles">
+            <div class="tile"><span class="tile-chip"><svg class="ic24"><use href="#i-position"/></svg></span><span class="tile-l">提示位置</span><span class="tile-v">屏幕中央</span></div>
+            <div class="tile"><span class="tile-chip"><svg class="ic24"><use href="#i-intensity"/></svg></span><span class="tile-l">强度</span><span class="tile-v">中</span></div>
+            <div class="tile"><span class="tile-chip"><svg class="ic24"><use href="#i-sound"/></svg></span><span class="tile-l">提示音</span><span class="tile-v">柔和</span></div>
+            <div class="tile"><span class="tile-chip"><svg class="ic24"><use href="#i-more"/></svg></span><span class="tile-l">更多</span><span class="tile-v">全部设置</span></div>
+          </div>
+        </section>
+
+        <!-- 区块 5 · 今日数据 -->
+        <section class="card">
+          <h3 class="blk-t" style="margin-bottom:12px">今日数据</h3>
+          <div class="stats">
+            <div class="stat" style="--c:var(--color-rhythm-move)">
+              <svg class="stat-ic"><use href="#i-clock"/></svg>
+              <span class="stat-v">3<i>小时</i>42<i>分</i></span><span class="stat-l">专注时长</span>
+            </div>
+            <div class="stat" style="--c:var(--color-rhythm-blink)">
+              <svg class="stat-ic"><use href="#i-blink"/></svg>
+              <span class="stat-v">26<i>次</i></span><span class="stat-l">眨眼提示</span>
+            </div>
+            <div class="stat" style="--c:var(--color-rhythm-look)">
+              <svg class="stat-ic"><use href="#i-look"/></svg>
+              <span class="stat-v">3<i>次</i></span><span class="stat-l">远眺</span>
+            </div>
+            <div class="stat" style="--c:var(--color-rhythm-move)">
+              <svg class="stat-ic"><use href="#i-move"/></svg>
+              <span class="stat-v">1<i>次</i></span><span class="stat-l">活动</span>
+            </div>
+            <div class="stat" style="--c:var(--color-rhythm-deep)">
+              <svg class="stat-ic"><use href="#i-deep"/></svg>
+              <span class="stat-v">1<i>次</i></span><span class="stat-l">长休</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 区块 6 · 引言卡 -->
+        <section class="card quote">
+          <svg class="q-ic"><use href="#i-plant"/></svg>
+          <p>把注意力还给眼睛，也还给自己 —— <em>20 秒的远眺，比一杯咖啡更清醒。</em></p>
+        </section>
+
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<section class="sec">
+  <div class="sec-h"><h2>设置页 · 四层节奏 + 通用 + 提示外观</h2><span class="blk-n">区块 7</span></div>
+  <p class="sec-note">
+    数字输入框用 <code>type="text"</code> 渲染，忠实于代码里的 <code>QAbstractSpinBox.NoButtons</code> 口径 ——
+    <b>没有 +/− 箭头</b>。每张节奏卡左侧色条取自对应节奏色，关闭态整卡降为 <code>bg/soft</code> 并去阴影。
+    字段与取值范围对齐 <code>settings.py:57-73</code>：眨眼 周期 30–180s / 提示间隔 5–30s；远眺 5–60min / 5–60s；
+    活动 20–120min / 1–10min；长休 30–180min / 1–30min。真实应用里本页超出 680px 需滚动，此处展开以便看全。
+  </p>
+  <div class="stage">
+    <div class="win win-auto">
+      <aside class="sb">
+        <div class="sb-brand">
+          <span class="sb-mark"><svg class="ic24"><use href="#i-logo"/></svg></span>
+          <span class="sb-name">EyeRest</span>
+        </div>
+        <div class="sb-item"><svg class="ic"><use href="#i-home"/></svg>首页</div>
+        <div class="sb-item is-active"><svg class="ic"><use href="#i-settings"/></svg>设置</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-stats"/></svg>统计</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-about"/></svg>关于</div>
+        <div class="sb-foot"><span class="dot"></span>护眼中 · v0.6.3</div>
+      </aside>
+
+      <main class="ct">
+        <h3 class="blk-t">四层节奏</h3>
+        <div class="sgrid">
+          <div class="rcard" style="--c:var(--color-rhythm-blink)">
+            <div class="rcard-h"><i class="rbar"></i><svg class="r-ic"><use href="#i-blink"/></svg><b>眨眼提醒</b><span class="sw on"></span></div>
+            <p class="r-desc">周期性轻柔提示，避免长时间不眨眼</p>
+            <div class="r-fields">
+              <label class="fld"><span>周期</span><input class="num" type="text" value="60"><span>秒</span></label>
+              <label class="fld"><span>提示间隔</span><input class="num" type="text" value="10"><span>秒</span></label>
+            </div>
+          </div>
+
+          <div class="rcard" style="--c:var(--color-rhythm-look)">
+            <div class="rcard-h"><i class="rbar"></i><svg class="r-ic"><use href="#i-look"/></svg><b>远眺放松</b><span class="sw on"></span></div>
+            <p class="r-desc">眺望 20 英尺外，放松睫状肌</p>
+            <div class="r-fields">
+              <label class="fld"><span>间隔</span><input class="num" type="text" value="20"><span>分钟</span></label>
+              <label class="fld"><span>时长</span><input class="num" type="text" value="20"><span>秒</span></label>
+            </div>
+          </div>
+
+          <div class="rcard" style="--c:var(--color-rhythm-move)">
+            <div class="rcard-h"><i class="rbar"></i><svg class="r-ic"><use href="#i-move"/></svg><b>起身活动</b><span class="sw on"></span></div>
+            <p class="r-desc">久坐提醒，起身伸展一下</p>
+            <div class="r-fields">
+              <label class="fld"><span>间隔</span><input class="num" type="text" value="45"><span>分钟</span></label>
+              <label class="fld"><span>时长</span><input class="num" type="text" value="5"><span>分钟</span></label>
+            </div>
+          </div>
+
+          <div class="rcard off" style="--c:var(--color-text-disabled)">
+            <div class="rcard-h"><i class="rbar"></i><svg class="r-ic" style="opacity:.45"><use href="#i-deep"/></svg><b style="color:var(--color-text-disabled)">深度休息</b><span class="sw dis"></span></div>
+            <p class="r-desc">已关闭</p>
+            <div class="r-fields">
+              <label class="fld"><span>间隔</span><input class="num" type="text" value="90" disabled><span>分钟</span></label>
+              <label class="fld"><span>时长</span><input class="num" type="text" value="5" disabled><span>分钟</span></label>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="blk-t">通用设置</h3>
+        <div class="card" style="padding:6px 18px">
+          <div class="srow"><span class="s-l">提示音</span><span class="sw on"></span></div>
+          <div class="srow"><span class="s-l">系统通知</span><span class="sw on"></span></div>
+          <div class="srow"><span class="s-l">开机自启</span><span class="sw"></span></div>
+          <div class="srow"><span class="s-l">最小化到托盘</span><span class="sw on"></span></div>
+          <div class="srow"><span class="s-l">全屏时延后提醒</span><span class="sw on"></span></div>
+        </div>
+
+        <h3 class="blk-t">提示外观</h3>
+        <div class="card" style="padding:6px 18px">
+          <div class="prow"><span class="p-l">皮肤</span><div class="p-set">
+            <span class="pill sel">极简</span><span class="pill">卡通</span><span class="pill">角色</span></div></div>
+          <div class="prow"><span class="p-l">位置</span><div class="p-set">
+            <span class="pill sel">屏幕中央</span><span class="pill">左下</span><span class="pill">右下</span>
+            <span class="pill">左上</span><span class="pill">右上</span><span class="pill">自定义</span></div></div>
+          <div class="prow"><span class="p-l">强度</span><div class="p-set">
+            <span class="pill">安静</span><span class="pill sel">标准</span><span class="pill">醒目</span></div></div>
+          <div class="prow"><span class="p-l">提示音</span><div class="p-set">
+            <span class="pill sel">呼吸</span><span class="pill">木鱼</span><span class="pill">风铃</span></div></div>
+        </div>
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<section class="sec">
+  <div class="sec-h"><h2>覆盖层</h2><span class="blk-n">区块 8–9</span></div>
+  <p class="sec-note">
+    两块都不属于主窗口的常规布局：PositionEditor 是<b>全屏遮罩 + 可拖预览</b>（单顶层窗体口径），
+    VisualCue 是<b>独立 400×120 顶层小窗</b>。它们是 P0 尖刺的验收对象，所以单列。
+  </p>
+  <div class="stage">
+
+    <div class="win win-fixed editor">
+      <aside class="sb">
+        <div class="sb-brand">
+          <span class="sb-mark"><svg class="ic24"><use href="#i-logo"/></svg></span>
+          <span class="sb-name">EyeRest</span>
+        </div>
+        <div class="sb-item is-active"><svg class="ic"><use href="#i-home"/></svg>首页</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-settings"/></svg>设置</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-stats"/></svg>统计</div>
+        <div class="sb-item"><svg class="ic"><use href="#i-about"/></svg>关于</div>
+        <div class="sb-foot"><span class="dot"></span>护眼中 · v0.6.3</div>
+      </aside>
+      <main class="ct"><h3 class="blk-t">设置</h3></main>
+
+      <div class="ed-mask">
+        <div class="ed-cue"><p>远眺放松时间到了</p></div>
+        <div class="ed-panel">
+          <p class="t">调整提示位置</p>
+          <p class="s">拖动预览框，把它放到你觉得舒服的位置</p>
+          <div class="ed-hint">按 Esc 取消 · 松手即自动保存</div>
+          <div class="ed-actions">
+            <button class="btn btn-ghost">取消</button>
+            <button class="btn btn-primary">保存位置</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="cue">
+        <svg class="cue-plant"><use href="#i-plant"/></svg>
+        <svg class="cue-ic"><use href="#i-blink"/></svg>
+        <p>眨眨眼吧<small>看一眼远处，让眼睛松一松</small></p>
+      </div>
+      <div class="cue" style="background:#F3FBF8">
+        <svg class="cue-plant"><use href="#i-plant"/></svg>
+        <svg class="cue-ic"><use href="#i-look"/></svg>
+        <p>看看窗外<small>20 英尺外，20 秒就够</small></p>
+      </div>
+      <div class="cue" style="background:#FFFCF6">
+        <svg class="cue-plant"><use href="#i-plant"/></svg>
+        <svg class="cue-ic"><use href="#i-move"/></svg>
+        <p>站起来走走<small>伸个懒腰，活动一下肩颈</small></p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<section class="sec">
+  <div class="sec-h"><h2>状态画廊</h2><span class="blk-n">区块 × 非正常态</span></div>
+  <p class="sec-note">
+    <code>Loading</code> / <code>Error</code> 在本项目<b>整体不适用</b>（纯本地应用，无网络往返）。
+    真正要画的是这六类。此判定把需要的帧数从 9×8=72 压到约 39 —— <b>省 46%</b>。
+  </p>
+  <div class="gal">
+
+    <div class="gcell">
+      <h4>① 暂停</h4>
+      <div class="gbody">
+        <div class="sb-foot" style="padding:0;color:var(--color-status-warning)"><span class="dot paused"></span>已暂停 · 剩余 29:41</div>
+        <div style="font-family:var(--font-brand);font-size:26px;color:var(--color-text-disabled);margin-top:8px;letter-spacing:1px">已暂停</div>
+      </div>
+      <p class="gnote">托盘暂停 30min / 2h / 今天。倒计时位置改为显示「已暂停」，不显示剩余秒数。</p>
+    </div>
+
+    <div class="gcell">
+      <h4>② 空数据</h4>
+      <div class="gbody">
+        <div class="stats">
+          <div class="stat" style="--c:var(--color-text-muted)"><svg class="stat-ic" style="opacity:.4"><use href="#i-clock"/></svg><span class="stat-v">--</span><span class="stat-l">专注时长</span></div>
+          <div class="stat" style="--c:var(--color-text-muted)"><svg class="stat-ic" style="opacity:.4"><use href="#i-blink"/></svg><span class="stat-v">0</span><span class="stat-l">眨眼提示</span></div>
+          <div class="stat" style="--c:var(--color-text-muted)"><svg class="stat-ic" style="opacity:.4"><use href="#i-look"/></svg><span class="stat-v">0</span><span class="stat-l">远眺</span></div>
+        </div>
+      </div>
+      <p class="gnote">首次启动 / 跨天后归零。空值用 <code>--</code> + <code>text/muted</code>，计数类保持 <code>0</code>（0 是有效值，不是缺失）。</p>
+    </div>
+
+    <div class="gcell">
+      <h4>③ 某层关闭</h4>
+      <div class="gbody" style="display:flex;flex-direction:column;gap:6px">
+        <div class="rm-row off" style="background:transparent"><i style="background:var(--color-rhythm-deep);opacity:.35"></i><span>长休</span><b>已关闭</b></div>
+        <div class="rm-row" style="background:transparent"><i style="background:var(--color-rhythm-blink)"></i><span>眨眼</span><b>60s</b></div>
+      </div>
+      <p class="gnote">Hero 总览该行降为 <code>text/disabled</code> 并把文字换成「已关闭」；设置页对应卡片灰化。</p>
+    </div>
+
+    <div class="gcell">
+      <h4>④ 英文界面</h4>
+      <div class="gbody">
+        <p style="margin:0;font-size:13px;font-weight:600">Time to look away</p>
+        <p style="margin:4px 0 0;font-size:12px;color:var(--color-text-secondary);line-height:1.55">Look at something 20 feet away for 20 seconds.</p>
+      </div>
+      <p class="gnote">主要风险是<b>长度膨胀</b>：副文案约 1.6×。状态卡与引言卡必须能换行、不撑破卡片。</p>
+    </div>
+
+    <div class="gcell">
+      <h4>⑤ 125% DPI</h4>
+      <div class="gbody"><div class="zoom125"><div class="hero-pill">专注 3 小时 42 分</div><div class="stat-v" style="--c:var(--color-rhythm-move);margin-top:6px">26<i>次</i></div></div></div>
+      <p class="gnote">Windows 缩放 125% 下圆角与 1px 描边会取整失真。本板单位全走 <code>px</code> 变量，可整体核对。</p>
+    </div>
+
+    <div class="gcell">
+      <h4>⑥ 长文本</h4>
+      <div class="gbody">
+        <p style="margin:0;font-size:12.5px;color:var(--color-text-secondary);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">把注意力还给眼睛，也还给自己 —— 20 秒的远眺，比一杯咖啡更清醒。记得每小时让视线离开屏幕一次，让睫状肌有机会放松下来。</p>
+      </div>
+      <p class="gnote">引言卡文案是 i18n 可改的，须限 2 行并优雅截断；状态卡副文案同理。</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<section class="sec">
+  <div class="sec-h"><h2>组件库 · 12 个</h2><span class="blk-n">atoms → molecules</span></div>
+  <p class="sec-note">
+    几何与 token 绑定逐项对齐 <code>docs/design/SPEC_COMPONENTS_AND_BLOCKS.md</code>，锚点是真实代码行号。
+    圆角统一按 §4-4 的建议值 <code>radius/sm = 6</code> 呈现（<b>代码侧待同步</b>，见文末不一致清单）。
+  </p>
+  <div class="specs">
+
+    <dl class="spec">
+      <dt>1 · Button/Primary</dt>
+      <p class="anchor">State=Default/Hover/Pressed/Disabled · r6 · pad 10×26 · <code>position_editor.py:283</code></p>
+      <div class="row">
+        <button class="btn btn-primary">保存设置</button>
+        <button class="btn btn-primary" style="background:var(--color-brand-hover)">保存设置</button>
+        <button class="btn btn-primary" style="background:var(--color-brand-pressed)">保存设置</button>
+        <button class="btn btn-primary" disabled>保存设置</button>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>2 · Button/Secondary</dt>
+      <p class="anchor">State=Default/Hover/Pressed · pad 8×26 · fontSize 13 · <code>settings.py:318</code></p>
+      <div class="row">
+        <button class="btn btn-secondary">恢复默认</button>
+        <button class="btn btn-secondary" style="border-color:var(--color-brand-primary);color:var(--color-text-brand)">恢复默认</button>
+        <button class="btn btn-secondary" style="background:var(--color-border-soft)">恢复默认</button>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>3 · Button/Ghost</dt>
+      <p class="anchor">State=Default/Hover · r6 · pad 10×22 · <code>position_editor.py:288</code></p>
+      <div class="row">
+        <button class="btn btn-ghost">取消</button>
+        <button class="btn btn-ghost" style="border-color:var(--color-border-focus);color:var(--color-text-brand)">取消</button>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>4 · Pill/Tag</dt>
+      <p class="anchor">State=Default/Selected · r999 · pad 3×12 · Caption 12 · <code>dashboard.py:311,780</code></p>
+      <div class="row">
+        <span class="pill">长时间未眨眼</span>
+        <span class="pill sel">已开启</span>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>5 · Nav/SidebarItem</dt>
+      <p class="anchor">State=Default/Hover/Active · r10 · pad 10×14 · icon 18 · <code>main_window.py:60-95</code></p>
+      <div class="row" style="flex-direction:column;align-items:stretch;width:100%;background:var(--color-bg-sidebar);border-radius:10px;padding:8px;gap:2px">
+        <div class="sb-item"><svg class="ic"><use href="#i-home"/></svg>首页</div>
+        <div class="sb-item" style="background:var(--color-bg-sidebar-hover)"><svg class="ic"><use href="#i-settings"/></svg>设置（hover）</div>
+        <div class="sb-item is-active"><svg class="ic"><use href="#i-stats"/></svg>统计（active）</div>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>6 · Tile/Quick</dt>
+      <p class="anchor">State=Default/Hover · 46×46 正圆 · <code>dashboard.py:141-144</code></p>
+      <div class="row">
+        <span class="tile-chip"><svg class="ic24"><use href="#i-position"/></svg></span>
+        <span class="tile-chip" style="background:var(--color-bg-raised);box-shadow:var(--shadow-raised)"><svg class="ic24"><use href="#i-sound"/></svg></span>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>7 · Card/Base</dt>
+      <p class="anchor">State=Default/Raised · r20 · pad 20 · <code>dashboard.py:287,643</code></p>
+      <div class="row" style="width:100%">
+        <div class="card" style="flex:1;padding:12px 14px;font-size:12px;color:var(--color-text-secondary)">bg/surface + shadow/card</div>
+        <div class="card" style="flex:1;padding:12px 14px;font-size:12px;color:var(--color-text-secondary);box-shadow:var(--shadow-raised)">Raised 态</div>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>8 · Card/Rhythm</dt>
+      <p class="anchor">Rhythm=Blink/Look/Move/Deep × State=On/Off · r14 · pad 16 · <code>settings.py:231-256</code></p>
+      <div class="row" style="width:100%;gap:8px">
+        <i class="rbar" style="--c:var(--color-rhythm-blink);height:32px"></i>
+        <i class="rbar" style="--c:var(--color-rhythm-look);height:32px"></i>
+        <i class="rbar" style="--c:var(--color-rhythm-move);height:32px"></i>
+        <i class="rbar" style="--c:var(--color-rhythm-deep);height:32px"></i>
+        <span class="lab">四节奏色条 · Off 态降为 text/disabled</span>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>9 · Card/Stat</dt>
+      <p class="anchor">State=有值/空值 · 5 列等宽 gap 10 · 数值取节奏色 · <code>dashboard.py:591-609</code></p>
+      <div class="row" style="width:100%">
+        <div class="stat" style="--c:var(--color-rhythm-look)"><span class="stat-v">3<i>次</i></span><span class="stat-l">有值</span></div>
+        <div class="stat" style="--c:var(--color-text-muted)"><span class="stat-v">--</span><span class="stat-l">空值</span></div>
+      </div>
+    </dl>
+
+    <dl class="spec">
+      <dt>10 · Control/Switch</dt>
+      <p class="anchor">State=On/Off/Disabled · 轨 44×24 · 钮 18</p>
+      <div class="row"><span class="sw on"></span><span class="sw"></span><span class="sw dis"></span>
+        <span class="lab">On 主色 / Off 主色淡化 / Disabled 中性</span></div>
+    </dl>
+
+    <dl class="spec">
+      <dt>11 · Control/Slider</dt>
+      <p class="anchor">Part=填充段/Track/Knob · 轨高 6 r3 · 钮 14</p>
+      <div class="row"><span class="sl"><i style="width:62%"></i><b style="left:62%"></b></span></div>
+    </dl>
+
+    <dl class="spec">
+      <dt>12 · Input/Number</dt>
+      <p class="anchor">State=Default/Focus/Error · r6 · pad 8×12 · <b>无 +/− 按钮</b> · <code>settings.py:306</code></p>
+      <div class="row">
+        <input class="num" type="text" value="60">
+        <input class="num" type="text" value="60" style="border-color:var(--color-border-focus);background:#fff;box-shadow:var(--shadow-focus)">
+        <input class="num err" type="text" value="999">
+      </div>
+    </dl>
+
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<section class="sec">
+  <div class="sec-h"><h2>可实现性对照</h2><span class="blk-n">本板即报告</span></div>
+  <div class="legend">
+    <h3>这块设计板同时是一份可实现性报告</h3>
+    <p>
+      下面每一项都<b>在本页真实生效</b> —— 浏览器做得到，Qt Widgets 不一定接得住。
+      这正是「HTML 设计板 → Qt 实现」的真正损耗点，也是路线 C 比 Figma 更"诚实"的地方：
+      Figma 画得出 QSS 永远做不了的柔光，而落差要到几个月后才暴露；这里就地可见。
+    </p>
+    <table>
+      <thead><tr><th style="width:30%">本页用到的能力</th><th style="width:20%">浏览器 / 小程序</th><th>Qt Widgets（QSS）</th></tr></thead>
+      <tbody>
+        <tr><td><code>var(--color-*)</code> 变量引用</td><td><span class="tag ok">原生支持</span></td><td><span class="tag">无原生变量</span> 必须代入字面值，失去「改一处全变」</td></tr>
+        <tr><td><code>box-shadow</code> 卡片柔光</td><td><span class="tag ok">原生支持</span></td><td><span class="tag">完全不支持</span> 只能 <code>QGraphicsDropShadowEffect</code>，且一个控件仅能挂一个</td></tr>
+        <tr><td><code>transition</code> 悬停过渡</td><td><span class="tag ok">原生支持</span></td><td><span class="tag">不支持</span> 无过渡与缓动</td></tr>
+        <tr><td>CSS <code>grid</code> 2×2 节奏卡</td><td><span class="tag ok">浏览器原生</span><span class="tag warn">小程序仅 Flex</span></td><td><span class="tag">无 CSS 布局</span> 需 QGridLayout 手工排</td></tr>
+        <tr><td><code>line-height</code> 行距松弛感</td><td><span class="tag ok">原生支持</span></td><td><span class="tag">无此属性</span> 需 QTextDocument 或补 padding</td></tr>
+        <tr><td><code>letter-spacing</code> 标题字距</td><td><span class="tag ok">原生支持</span></td><td><span class="tag warn">须走 API</span> <code>QFont.setLetterSpacing</code></td></tr>
+        <tr><td>内嵌品牌字体（data URI）</td><td><span class="tag ok">本板即生效</span></td><td><span class="tag ok">可达成</span> <code>QFontDatabase.addApplicationFont</code>（已在用）</td></tr>
+        <tr><td>线性渐变 Hero 底</td><td><span class="tag ok">原生支持</span></td><td><span class="tag warn">须走 API</span> QSS/画刷渐变，非声明式</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================================================================= -->
+<section class="sec">
+  <div class="sec-h"><h2>代码 ↔ 设计源不一致清单</h2><span class="blk-n">待裁定</span></div>
+  <div class="legend">
+    <table>
+      <thead><tr><th style="width:34%">项</th><th>现状</th><th style="width:16%">状态</th></tr></thead>
+      <tbody>
+        <tr><td>PositionEditor 主按钮硬编码蓝 <code>#1976d2</code></td><td>与主色绿毫无关系，是 V0.6 之前的遗留</td><td><span class="tag ok">已修</span></td></tr>
+        <tr><td>PositionEditor 次按钮半透明灰</td><td><code>rgba(120,124,134,220)</code> 反白字，未接设计系统</td><td><span class="tag ok">已修</span></td></tr>
+        <tr><td>休息次数无独立数据源</td><td><code>break_count = look_away + deep</code>，但区块 5 又分列远眺与长休</td><td><span class="tag">待裁定</span></td></tr>
+        <tr><td>两套按钮圆角（r6 vs r8）</td><td><code>position_editor.py</code> r6、<code>settings.py</code> r8</td><td><span class="tag">待裁定</span> 建议统一 r6</td></tr>
+        <tr><td>按钮内边距 <code>10×26</code> 不是 token 值</td><td>间距体系无 26，最近的是 <code>space/6 = 24</code></td><td><span class="tag warn">产品决定</span> 会改变观感</td></tr>
+        <tr><td>PositionEditor 遮罩调色板未 token 化</td><td>提示条 <code>#eaf4ff</code>、遮罩 <code>rgba(20,24,34,210)</code></td><td><span class="tag warn">产品决定</span> 或明确豁免</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="foot">
+  <b>如何更新本板</b> —— 真源只有一个，改完重跑即可，<b>不要手改本产物</b>：
+  <pre># 1) 改 token 真源
+#    app/ui/theme/tokens.py
+
+# 2) 重跑导出（CSS / WXSS，给设计板与小程序）
+.venv/Scripts/python.exe tools/export_css_tokens.py
+
+# 3) 重新生成本设计板（注入 token + 内嵌品牌字体）
+.venv/Scripts/python.exe tools/build_design_board.py</pre>
+  <p style="margin-top:14px">
+    结构源在 <code>docs/design/html/board.src.html</code>；改动请改那里。
+    token 命名与 Figma 侧同源：<code>color.bg.canvas</code> → <code>--color-bg-canvas</code>。
+  </p>
+</div>
+
+</div>
+</body>
+</html>

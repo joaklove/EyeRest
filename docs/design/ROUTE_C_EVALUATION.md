@@ -160,8 +160,16 @@ HTML 设计板同样能画出那些效果（浏览器也支持 `box-shadow` / `b
 
 ## 6. 已落地 / 待办
 
+**2026-09-13：用户拍板走路线 C，设计板已从"样板"展开为"完整板"。**
+
 - ✅ `tools/export_css_tokens.py` —— 63 变量 → CSS（`:root`）+ WXSS（`page`）
 - ✅ `docs/design/html/tokens.css` / `tokens.wxss` / `tokens-report.md`
-- ✅ `docs/design/html/design-board.html` —— 设计板样板，内置可实现性标注
-- ⬜ 按 `SPEC_COMPONENTS_AND_BLOCKS.md` 的 9 区块 IA 把设计板展开成完整板
-- ⬜ 对账脚本：HTML 截图 vs Qt 截图做像素 diff（复用现有 PIL 采样工具链）
+- ✅ `tools/build_design_board.py` —— 从 `board.src.html` 生成**自包含**设计板
+      （注入 token + base64 内嵌品牌字体；产物 2.0 MB，零外部依赖，双击即开）
+- ✅ `docs/design/html/design-board.html` —— **完整板**：9 区块全覆盖
+      （首页 6 块 / 设置页 3 组 / PositionEditor / VisualCue 三种）
+      + 状态画廊 6 类非正常态 + 12 组件全状态 + 可实现性对照 + 不一致清单
+- ✅ `docs/design/html/README.md` —— 生成管线、看板方式、对账方法、5 条踩坑
+- ✅ 验收图归档 `docs/design/acceptance/board/`（headless Chrome 出图，5 张）
+- ⬜ **对账脚本**：HTML 截图 vs Qt 截图自动像素 diff（目前仍是手工两步）
+- ⬜ 把 §4 的 4 条「待裁定 / 产品决定」项收口（需用户拍板）
