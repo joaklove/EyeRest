@@ -19,6 +19,7 @@ from unittest.mock import MagicMock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from app.config import defaults  # noqa: E402
@@ -79,7 +80,6 @@ class TestCueReadability(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def test_popup_text_is_dark_on_warm_white_card(self) -> None:
-        from PySide6.QtCore import Qt
         from PySide6.QtGui import QPalette
 
         from app.ui.visual_cue import VisualCuePopup
@@ -99,6 +99,60 @@ class TestCueReadability(unittest.TestCase):
             f"提示文字 {color.name()} 亮度过高，在暖白卡 #FFFAF2 上不可读",
         )
         popup.hide()
+
+
+class TestCuePreviewMatchesPopup(unittest.TestCase):
+    """位置编辑预览与真实提示卡必须**同一份样式**。
+
+    回归背景：V0.6 暖色改版只改了真卡，编辑预览留在改版前的深色底
+    ``rgba(28, 32, 44, 235)`` + 蓝边 —— 用户在编辑器里摆的位置，和平时
+    弹出的样子不是同一样东西。2026-09-13 裁定：预览就用暖白 + 绿边。
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_preview_shares_card_stylesheet_with_popup(self) -> None:
+        from app.ui.visual_cue import (
+            CUE_CARD_OBJECT_NAME,
+            VisualCuePopup,
+            cue_card_stylesheet,
+        )
+        from app.ui.visual_cue_preview import VisualCuePreview
+
+        popup = VisualCuePopup()
+        popup.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        preview = VisualCuePreview()
+
+        self.assertEqual(preview._card.objectName(), CUE_CARD_OBJECT_NAME)
+        self.assertEqual(preview._card.styleSheet(), cue_card_stylesheet())
+        self.assertEqual(
+            preview._card.styleSheet(),
+            popup._card.styleSheet(),
+            "预览卡与真实提示卡样式不一致（不允许各写一份）",
+        )
+
+    def test_preview_text_is_dark_on_warm_white_card(self) -> None:
+        from PySide6.QtGui import QPalette
+
+        from app.ui.visual_cue_preview import VisualCuePreview
+
+        preview = VisualCuePreview()
+        preview.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        preview.show()
+        self.app.processEvents()
+
+        color = preview._text.palette().color(QPalette.ColorRole.WindowText)
+        luminance = (
+            0.2126 * color.redF() + 0.7152 * color.greenF() + 0.0722 * color.blueF()
+        )
+        self.assertLess(
+            luminance,
+            0.5,
+            f"预览文字 {color.name()} 亮度过高，在暖白卡上不可读",
+        )
+        preview.hide()
 
 
 class TestMainWindowSidebar(unittest.TestCase):

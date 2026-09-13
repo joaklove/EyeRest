@@ -83,6 +83,26 @@ _ICON_SIZE_BY_SKIN = {"minimal": 22, "cartoon": 22, "character": 28}
 #: 呼吸动画周期（毫秒）
 _BREATH_MS = 1200
 
+#: 提示卡（``QFrame``）对象名。真卡与编辑预览**必须同名**，否则共用样式表会失效。
+CUE_CARD_OBJECT_NAME = "cueCard"
+
+
+def cue_card_stylesheet() -> str:
+    """提示卡样式表 —— 真卡与编辑预览共用的**唯一真源**。
+
+    两处曾各持一份：V0.6 暖色改版只改了真卡，编辑预览留在改版前的深色底
+    ``rgba(28, 32, 44, 235)`` + 蓝边 ``rgba(120, 200, 255, 90)``，于是
+    "在编辑器里摆的位置"和"平时弹出的样子"不是同一样东西。样式收敛到这里。
+    """
+    return f"""
+    QFrame#{CUE_CARD_OBJECT_NAME} {{
+        background-color: {tokens.CUE_CARD_BG};
+        border-radius: {tokens.RADIUS_CUE_CARD}px;
+        border: 1px solid {tokens.CUE_CARD_BORDER};
+    }}
+    QLabel {{ color: {tokens.TEXT_PRIMARY}; background: transparent; }}
+    """
+
 
 class VisualCuePopup(QWidget):
     """非模态视觉提醒气泡（四层节奏共用）。
@@ -162,17 +182,8 @@ class VisualCuePopup(QWidget):
         outer.setSpacing(0)
 
         self._card = QFrame(self)
-        self._card.setObjectName("cueCard")
-        self._card.setStyleSheet(
-            f"""
-            QFrame#cueCard {{
-                background-color: rgba(255, 250, 242, 240);
-                border-radius: 22px;
-                border: 1px solid rgba(38, 174, 137, 90);
-            }}
-            QLabel {{ color: {tokens.TEXT_PRIMARY}; background: transparent; }}
-            """
-        )
+        self._card.setObjectName(CUE_CARD_OBJECT_NAME)
+        self._card.setStyleSheet(cue_card_stylesheet())
         outer.addWidget(self._card)
 
         card_layout = QHBoxLayout(self._card)

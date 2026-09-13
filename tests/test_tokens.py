@@ -6,6 +6,7 @@
    alpha clamp 成 1，设计板里遮罩变纯黑，设计源与实现静默漂移。
 2. 按钮几何回到手写字面值（历史上存在 r6 / r8 / pad 10×26 / pad 8×18 三套）。
 3. 已修过的硬编码色被重新写回代码（`#1976d2` 等）。
+4. 真卡与编辑预览各自维护一份配色 —— 改了一边忘了另一边，同一张卡出现两种样子。
 """
 
 from __future__ import annotations
@@ -55,6 +56,44 @@ class TestOverlayPalette(unittest.TestCase):
             self.assertAlmostEqual(got_g, g / 255.0, places=3)
             self.assertAlmostEqual(got_b, b / 255.0, places=3)
             self.assertAlmostEqual(got_a, a, places=3)
+
+
+class TestCueCardTokens(unittest.TestCase):
+    """提示卡配色（真卡 + 编辑预览共用同一份）。"""
+
+    def test_alpha_is_css_valid(self) -> None:
+        """alpha 必须是 0-1 小数（QSS 惯用的 240 / 90 在 CSS 里会被 clamp）。"""
+        for name, value in (
+            ("CUE_CARD_BG", tokens.CUE_CARD_BG),
+            ("CUE_CARD_BORDER", tokens.CUE_CARD_BORDER),
+        ):
+            m = re.fullmatch(r"rgba\((\d+), (\d+), (\d+), ([\d.]+)\)", value)
+            self.assertIsNotNone(m, f"{name} 不是规范 rgba() 字符串：{value!r}")
+            alpha = float(m.group(4))  # type: ignore[union-attr]
+            self.assertGreater(alpha, 0.0, f"{name} alpha 不能为 0")
+            self.assertLessEqual(alpha, 1.0, f"{name} alpha 必须 <= 1（CSS 口径）")
+
+    def test_string_and_components_agree(self) -> None:
+        self.assertEqual(tokens.CUE_CARD_BG, tokens.rgba(tokens.CUE_CARD_BG_RGBA))
+        self.assertEqual(
+            tokens.CUE_CARD_BORDER, tokens.rgba(tokens.CUE_CARD_BORDER_RGBA)
+        )
+
+    def test_preview_has_no_private_palette(self) -> None:
+        """编辑预览不得自持配色 —— 只能引用 visual_cue 的共享样式表。
+
+        回归背景：预览曾持有 ``rgba(28, 32, 44, 235)`` 深色底 +
+        ``rgba(120, 200, 255, 90)`` 蓝边，暖色改版后与真卡不一致。
+        """
+        src = (ROOT / "app/ui/visual_cue_preview.py").read_text(encoding="utf-8")
+        self.assertIn("cue_card_stylesheet", src, "预览未引用共享样式表")
+        self.assertNotIn("rgba(", src, "预览里出现私有的 rgba() 配色")
+        self.assertNotIn("cuePreviewCard", src, "预览仍用私有对象名，共享样式表会失效")
+
+    def test_popup_uses_shared_stylesheet(self) -> None:
+        src = (ROOT / "app/ui/visual_cue.py").read_text(encoding="utf-8")
+        self.assertIn("def cue_card_stylesheet", src, "共享样式表函数缺失")
+        self.assertNotIn("rgba(255, 250, 242", src, "真卡配色未走 token")
 
 
 class TestButtonGeometry(unittest.TestCase):

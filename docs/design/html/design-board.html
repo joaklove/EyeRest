@@ -17,7 +17,7 @@
 /* ============================================================
    本文件由 tools/build_design_board.py 生成，请勿手改。
    结构源：docs/design/html/board.src.html
-   token 真源：app/ui/theme/tokens.py（69 个变量）
+   token 真源：app/ui/theme/tokens.py（72 个变量）
    ============================================================ */
 /* 由 tools/export_css_tokens.py 从 app/ui/theme/tokens.py 生成，请勿手改。 */
 :root {
@@ -60,6 +60,8 @@
   --color-overlay-scrim: rgba(10, 12, 18, 0.471);
   --color-overlay-tip-bg: rgba(20, 24, 34, 0.824);
   --color-overlay-tip-text: #EAF4FF;
+  --color-overlay-cue-card-bg: rgba(255, 250, 242, 0.941);
+  --color-overlay-cue-card-border: rgba(38, 174, 137, 0.353);
   /* font-size */
   --font-size-display: 32px;
   --font-size-h1: 22px;
@@ -75,6 +77,7 @@
   --radius-xl: 20px;
   --radius-pill: 999px;
   --radius-button: 16px;
+  --radius-cue-card: 22px;
   /* shadow */
   --shadow-card: 0 2px 8px rgba(45, 55, 72, 0.06);
   --shadow-raised: 0 4px 16px rgba(45, 55, 72, 0.10);
@@ -375,6 +378,26 @@ body {
   border-radius: var(--radius-pill); padding: 1px 8px;
 }
 .ed-cue p { margin: 0; font-size: var(--font-size-body); color: var(--color-text-primary); }
+/* 拖拽预览卡（VisualCuePreview）：与真实提示卡**同款** —— 暖白底 + 主色描边 + r22。
+   token 走 --color-overlay-cue-card-bg / -border 与 --radius-cue-card，
+   与 Qt 侧 cue_card_stylesheet() 同源（2026-09-13 裁定：预览就用暖白 + 绿边）。 */
+.ed-preview {
+  position: absolute; left: 46%; top: 26%;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px 10px 18px;
+  background: var(--color-overlay-cue-card-bg);
+  border: 1px solid var(--color-overlay-cue-card-border);
+  border-radius: var(--radius-cue-card);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .35);
+}
+.ed-preview svg { width: 22px; height: 22px; }
+.ed-preview span { font-size: var(--font-size-secondary); color: var(--color-text-primary); }
+.ed-preview::after {
+  content: "拖拽预览 · 与真卡同款"; position: absolute; top: -11px; left: 12px; font-size: 11px;
+  white-space: nowrap; width: max-content;
+  color: var(--color-text-inverted); background: var(--color-brand-primary);
+  border-radius: var(--radius-pill); padding: 1px 8px;
+}
 /* 提示条：真实实现是居中一个 QLabel，颜色全部来自 overlay token */
 .ed-hint-pill {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -799,9 +822,11 @@ body {
   <p class="sec-note">
     两块都不属于主窗口的常规布局：PositionEditor 是<b>全屏遮罩 + 可拖预览</b>（单顶层窗体口径），
     VisualCue 是<b>独立 400×120 顶层小窗</b>。它们是 P0 尖刺的验收对象，所以单列。<br>
-    本块几何按 <code>position_editor.py</code> 复刻：遮罩 + <b>居中提示条</b> + 右下角按钮，
+    本块几何按 <code>position_editor.py</code> 复刻：遮罩 + <b>拖拽预览卡</b> + <b>居中提示条</b> + 右下角按钮，
     配色全部来自 <code>--color-overlay-*</code>。注意<b>不存在浮层面板</b>——本板此前画过一个
-    （标题 + 副文案 + 蓝色提示条），真实实现里没有，已删除；虚线框与「可拖动」标签是标注，不是实现。
+    （标题 + 副文案 + 蓝色提示条），真实实现里没有，已删除；虚线框与「可拖动」标签是标注，不是实现。<br>
+    拖拽预览卡按 2026-09-13 裁定改为<b>与真实提示卡同款</b>（暖白底 + 绿边 + r22），
+    不再是改版前的深色卡 + 蓝边——预览的意义就是"所见即所得"。
   </p>
   <div class="stage">
 
@@ -820,6 +845,10 @@ body {
       <main class="ct"><h3 class="blk-t">设置</h3></main>
 
       <div class="ed-mask">
+        <div class="ed-preview">
+          <svg><use href="#i-blink"/></svg>
+          <span>眨眨眼</span>
+        </div>
         <div class="ed-cue"><p>远眺放松时间到了</p></div>
         <div class="ed-hint-pill">拖动提示到你习惯的位置 · 保存后将恢复护眼提醒（Esc 取消）</div>
         <div class="ed-actions">
@@ -1067,7 +1096,7 @@ body {
 
 <!-- ================================================================= -->
 <section class="sec">
-  <div class="sec-h"><h2>代码 ↔ 设计源不一致清单</h2><span class="blk-n">7 条已裁定 · 2 条待裁定</span></div>
+  <div class="sec-h"><h2>代码 ↔ 设计源不一致清单</h2><span class="blk-n">9 条已裁定 · 0 条待裁定</span></div>
   <div class="legend">
     <table>
       <thead><tr><th style="width:34%">项</th><th>现状</th><th style="width:20%">状态</th></tr></thead>
@@ -1079,15 +1108,15 @@ body {
         <tr><td>按钮内边距 <code>10×26</code> 不是 token 值</td><td>间距体系无 26，最近的是 <code>space/6 = 24</code></td><td><span class="tag ok">已修</span> 统一 <code>space/3 × space/6</code>（12×24）</td></tr>
         <tr><td>PositionEditor 遮罩调色板未 token 化</td><td>提示条 <code>#eaf4ff</code>、遮罩 <code>rgba(20,24,34,210)</code></td><td><span class="tag ok">已修</span> 新增 <code>color/overlay/*</code></td></tr>
         <tr><td><b>提示卡文案实质不可见</b>（本轮新发现）</td><td>V0.6 暖色改版 <code>f487020</code> 把卡底改成暖白 <code>#FFFAF2</code>，文字色却留在 <code>#eaf4ff</code> → 近白压暖白，对比度约 1.06:1</td><td><span class="tag ok">已修</span> 改用 <code>text/primary</code></td></tr>
-        <tr><td>编辑预览与真实提示卡<b>不一致</b></td><td><code>visual_cue_preview.py</code> 仍是改版前的深色卡 + 蓝边（<code>rgba(28,32,44,235)</code> / <code>rgba(120,200,255,90)</code>），而真实提示卡已是暖白 + 绿边 —— 预览与实物不符</td><td><span class="tag warn">待裁定</span></td></tr>
-        <tr><td>第三类按钮：小尺寸胶囊</td><td>设置页「▶ 试听」r6 / pad 4×14（<code>settings.py:492</code>）、休息全屏窗按钮 r6/r8（<code>break_window.py:217,534</code>）—— 未列入 12 组件表</td><td><span class="tag warn">待裁定</span></td></tr>
+        <tr><td>编辑预览与真实提示卡<b>不一致</b></td><td><code>visual_cue_preview.py</code> 曾是改版前的深色卡 + 蓝边（<code>rgba(28,32,44,235)</code> / <code>rgba(120,200,255,90)</code>），而真实提示卡已是暖白 + 绿边 —— 预览与实物不符</td><td><span class="tag ok">已修</span> 预览改为暖白 + 绿边；配色收敛到共享样式表 <code>cue_card_stylesheet()</code> 与 <code>color/cue-card/*</code>，两处不再各写一份</td></tr>
+        <tr><td>第三类按钮：小尺寸胶囊</td><td>设置页「▶ 试听」r6 / pad 4×14（<code>settings.py:492</code>）、休息全屏窗按钮 r6/r8（<code>break_window.py:217,534</code>）—— 未列入 12 组件表</td><td><span class="tag ok">已裁定</span> <b>不</b>统一到 r16（高度约 22px，r16 会变成全圆胶囊，与"次要小控件"层级不符）</td></tr>
       </tbody>
     </table>
   </div>
   <p class="sec-note" style="margin-top:14px">
-    两条待裁定都是**观感决定**，不替用户拍板：① 编辑预览是否改为与真实提示卡同款
-    （推荐改，预览的意义就是"所见即所得"）；② 小尺寸胶囊是否也统一到 r16
-    （推荐<b>不</b>统一——它高度仅约 22px，r16 会变成全圆胶囊，与"次要小控件"的层级不符）。
+    2026-09-13 两条观感决定均已拍板，本板不再有"待裁定"项：① 编辑预览<b>就</b>用暖白 + 绿边
+    —— 预览的意义是"所见即所得"，与真卡同款才成立；② 小尺寸胶囊<b>不</b>统一到 r16
+    —— 它高度约 22px，r16 会变成全圆胶囊，与"次要小控件"的层级不符。
   </p>
 </section>
 

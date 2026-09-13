@@ -39,6 +39,8 @@
   --color-overlay-scrim: rgba(10, 12, 18, 0.471);
   --color-overlay-tip-bg: rgba(20, 24, 34, 0.824);
   --color-overlay-tip-text: #EAF4FF;
+  --color-overlay-cue-card-bg: rgba(255, 250, 242, 0.941);
+  --color-overlay-cue-card-border: rgba(38, 174, 137, 0.353);
   /* font-size */
   --font-size-display: 32px;
   --font-size-h1: 22px;
@@ -54,6 +56,7 @@
   --radius-xl: 20px;
   --radius-pill: 999px;
   --radius-button: 16px;
+  --radius-cue-card: 22px;
   /* shadow */
   --shadow-card: 0 2px 8px rgba(45, 55, 72, 0.06);
   --shadow-raised: 0 4px 16px rgba(45, 55, 72, 0.10);

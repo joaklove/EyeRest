@@ -90,6 +90,15 @@ OVERLAY_SCRIM_RGBA: tuple[int, int, int, float] = (10, 12, 18, 0.471)
 OVERLAY_TIP_BG_RGBA: tuple[int, int, int, float] = (20, 24, 34, 0.824)
 OVERLAY_TIP_TEXT = "#EAF4FF"    # 提示条文字（冷白，压在深色提示条上）
 
+# 视觉提示卡（暖白底 + 主色描边）。
+# **真卡 VisualCuePopup 与编辑预览 VisualCuePreview 共用这一份** ——
+# 2026-09-13 之前两处各写一套：V0.6 暖色改版只改了真卡，预览留在改版前的
+# 深色底 `rgba(28, 32, 44, 235)` + 蓝边 `rgba(120, 200, 255, 90)`，结果是
+# "在编辑器里摆的位置"和"平时弹出的样子"根本不是同一样东西。
+# 同时把 alpha 从 QSS 专有的 0-255（240 / 90）换成两侧通用的 0-1 小数。
+CUE_CARD_BG_RGBA: tuple[int, int, int, float] = (255, 250, 242, 0.941)
+CUE_CARD_BORDER_RGBA: tuple[int, int, int, float] = (38, 174, 137, 0.353)
+
 
 def rgba(value: tuple[int, int, int, float]) -> str:
     """``(r, g, b, a)`` -> Qt QSS 与 CSS **共同合法**的 rgba() 字符串。"""
@@ -105,6 +114,8 @@ def to_qcolor(value: tuple[int, int, int, float]) -> QColor:
 
 OVERLAY_SCRIM = rgba(OVERLAY_SCRIM_RGBA)      # 全屏遮罩
 OVERLAY_TIP_BG = rgba(OVERLAY_TIP_BG_RGBA)    # 提示条底
+CUE_CARD_BG = rgba(CUE_CARD_BG_RGBA)          # 提示卡底（真卡 + 编辑预览共用）
+CUE_CARD_BORDER = rgba(CUE_CARD_BORDER_RGBA)  # 提示卡描边
 
 # ----------------------------------------------------------------------
 # 字体（Typography）
@@ -150,6 +161,9 @@ RADIUS_MD = 10
 RADIUS_LG = 14
 RADIUS_XL = 20
 RADIUS_PILL = 999
+
+# 提示卡圆角（真卡 + 编辑预览共用；比 RADIUS_XL 稍大，卡片本体像颗药丸的半程）
+RADIUS_CUE_CARD = 22
 
 # 按钮统一几何（2026-09-13 裁定，见 docs/design/SPEC_COMPONENTS_AND_BLOCKS.md §4）
 # 此前是三套手写值：position_editor r6 + pad 10×26、settings r8 + pad 8×18/8×26。

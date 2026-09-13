@@ -148,6 +148,9 @@ def build() -> dict:
             "scrim": color(T.OVERLAY_SCRIM),
             "tip-bg": color(T.OVERLAY_TIP_BG),
             "tip-text": color(T.OVERLAY_TIP_TEXT),
+            # 视觉提示卡（真卡 + 编辑预览共用，2026-09-13 收敛为一份）
+            "cue-card-bg": color(T.CUE_CARD_BG),
+            "cue-card-border": color(T.CUE_CARD_BORDER),
         },
     }
 
@@ -168,6 +171,7 @@ def build() -> dict:
         "xl": number(T.RADIUS_XL),
         "pill": number(T.RADIUS_PILL),
         "button": number(T.RADIUS_BUTTON),
+        "cue-card": number(T.RADIUS_CUE_CARD),
     }
 
     tokens["size"] = {
@@ -295,6 +299,8 @@ def main() -> int:
         "| `RADIUS_BUTTON` | `radius/button`（§4 裁定：按钮统一 r16） |",
         "| `BUTTON_PAD_V/H` | `space/button-v`(→`space/3`) / `space/button-h`(→`space/6`) |",
         "| `OVERLAY_SCRIM/TIP_BG/TIP_TEXT` | `color/overlay/*`（alpha 用 0-1 小数） |",
+        "| `CUE_CARD_BG/BORDER` | `color/overlay/cue-card-*`（真卡 + 编辑预览共用） |",
+        "| `RADIUS_CUE_CARD` | `radius/cue-card` |",
         "| `DISPLAY/H1/H2/H3/BODY/SECONDARY/CAPTION` | `font-size/*` |",
         "| `SHADOW_*` | `shadow/*` |",
         "",

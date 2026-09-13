@@ -15,7 +15,8 @@ Qt 子控件绘制顺序确定（父背景 → 子控件），"眼睛压在遮�
 不依赖任何 raise / Z-order 操作。
 
 预览内容 = 真实提示的静态快照（同皮肤、同强度尺寸 + 文字「眨眨眼」），
-用户调整的就是日常看到的完整提示。
+用户调整的就是日常看到的完整提示。**卡片配色/圆角/描边/文字色统一取自
+:func:`app.ui.visual_cue.cue_card_stylesheet`**，没有第二份样式。
 """
 
 from __future__ import annotations
@@ -27,7 +28,13 @@ from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QFrame, QVBoxLayout, QWidget
 
 from app.i18n import tr
-from app.ui.visual_cue import _ICONS_BY_SKIN, _ICON_SIZE_BY_SKIN, _INTENSITY_SCALE
+from app.ui.visual_cue import (
+    CUE_CARD_OBJECT_NAME,
+    _ICONS_BY_SKIN,
+    _ICON_SIZE_BY_SKIN,
+    _INTENSITY_SCALE,
+    cue_card_stylesheet,
+)
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -70,17 +77,10 @@ class VisualCuePreview(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
 
         self._card = QFrame(self)
-        self._card.setObjectName("cuePreviewCard")
-        self._card.setStyleSheet(
-            """
-            QFrame#cuePreviewCard {
-                background-color: rgba(28, 32, 44, 235);
-                border-radius: 22px;
-                border: 1px solid rgba(120, 200, 255, 90);
-            }
-            QLabel { color: #eaf4ff; background: transparent; }
-            """
-        )
+        # 对象名与样式表都取自 visual_cue —— 预览卡与真实提示卡**同源**，
+        # 不允许在这里另写一份配色（历史上正是这么漂成"深色底 + 蓝边"的）。
+        self._card.setObjectName(CUE_CARD_OBJECT_NAME)
+        self._card.setStyleSheet(cue_card_stylesheet())
         outer.addWidget(self._card)
 
         card_layout = QHBoxLayout(self._card)
