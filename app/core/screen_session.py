@@ -29,6 +29,21 @@ OFF   锁屏 / 休眠 / 自然休息，结束会话
 
 ``AWAY`` 不重置计时器是关键——它保证「看长文档 3 分钟」不会被误判成休息。
 
+## 全屏内容消费的例外（后补的关键修正）
+
+上面的模型有个自相矛盾的地方：文档一边说「看视频 / 会议：完全不碰键鼠，
+视觉负荷最高」，一边又用同一套阈值把「看视频」判成 AWAY —— 而 AWAY 会让
+BlinkEngine 停发眨眼提示。结果是**用户最需要护眼的场景，提示反而全停**。
+
+修正方式：注入 ``fullscreen_provider`` 后，检测到「全屏内容消费」
+（看视频 / 全屏演示 / 全屏应用，由 ``SHQueryUserNotificationState`` 判定）
+时改用 ``fullscreen_away_threshold`` / ``fullscreen_natural_rest_threshold``
+这组放宽阈值 —— 只要没超过那个时长，就认为人还在屏幕前，继续累计暴露、
+继续走提示节奏。只有超过放宽阈值仍无输入，才回到「真的离开了」的判断。
+
+真到了全屏但人确实走了的情况（比如视频挂着人去吃饭），放宽阈值兜底：
+超过 ``fullscreen_natural_rest_threshold`` 仍会判自然休息。
+
 ## 用法
 
 ```python
@@ -82,6 +97,9 @@ class ScreenSessionSnapshot:
     idle_seconds: float
     #: 会话是否已因锁屏/休眠/自然休息而结束
     ended_reason: Optional[str] = None
+    #: 当前是否处于「全屏内容消费」（看视频 / 全屏演示 / 全屏应用）。
+    #: 为 ``True`` 时启用放宽阈值，避免把「看视频」误判成「离开」。
+    fullscreen: bool = False
 
 
 class ScreenSessionEngine:
@@ -104,6 +122,9 @@ class ScreenSessionEngine:
         away_threshold: Optional[float] = None,
         natural_rest_threshold: Optional[float] = None,
         resume_threshold: Optional[float] = None,
+        fullscreen_provider: Optional[Callable[[], bool]] = None,
+        fullscreen_away_threshold: Optional[float] = None,
+        fullscreen_natural_rest_threshold: Optional[float] = None,
         event_bus: Optional[EventBus] = None,
     ) -> None:
         """初始化。
@@ -117,6 +138,13 @@ class ScreenSessionEngine:
                 ``defaults.NATURAL_REST_THRESHOLD``。
             resume_threshold: 从 AWAY/OFF 恢复到 ON 的 idle 上限，默认
                 ``defaults.SESSION_RESUME_THRESHOLD``。
+            fullscreen_provider: 返回「当前是否处于全屏内容消费」的可调用
+                对象（看视频 / 演示 / 全屏应用）；为 None 时不启用全屏豁免。
+            fullscreen_away_threshold: 全屏内容消费期间进入 AWAY 的 idle
+                秒数，默认 ``defaults.FULLSCREEN_AWAY_THRESHOLD``。
+            fullscreen_natural_rest_threshold: 全屏内容消费期间判定自然
+                休息的 idle 秒数，默认
+                ``defaults.FULLSCREEN_NATURAL_REST_THRESHOLD``。
             event_bus: 事件总线；为 None 时不发布事件。
         """
         self._clock: Clock = clock or default_clock
@@ -136,6 +164,17 @@ class ScreenSessionEngine:
             if resume_threshold is not None
             else defaults.SESSION_RESUME_THRESHOLD
         )
+        self._fullscreen_provider = fullscreen_provider
+        self._fullscreen_away_threshold = float(
+            fullscreen_away_threshold
+            if fullscreen_away_threshold is not None
+            else defaults.FULLSCREEN_AWAY_THRESHOLD
+        )
+        self._fullscreen_natural_rest_threshold = float(
+            fullscreen_natural_rest_threshold
+            if fullscreen_natural_rest_threshold is not None
+            else defaults.FULLSCREEN_NATURAL_REST_THRESHOLD
+        )
         self._bus = event_bus
 
         self._lock = threading.RLock()
@@ -147,6 +186,7 @@ class ScreenSessionEngine:
         self._session_started_at = now
         self._last_tick_at = now
         self._idle_seconds = 0.0
+        self._fullscreen = False
         self._locked = False
         self._ended_reason: Optional[str] = None
 
@@ -208,16 +248,50 @@ class ScreenSessionEngine:
             logger.exception("读取空闲时长失败，按活跃处理")
             return 0.0
 
+    def _read_fullscreen(self) -> bool:
+        """读取「是否处于全屏内容消费」；未注入或读取失败时视为 False。"""
+        if self._fullscreen_provider is None:
+            return False
+        try:
+            return bool(self._fullscreen_provider())
+        except Exception:  # noqa: BLE001
+            logger.exception("全屏内容检测失败，视为非全屏")
+            return False
+
     def _apply_idle_rules(self, idle: float, delta: float) -> None:
-        """依据 idle 时长推进状态并累加时间。"""
-        if idle >= self._natural_rest_threshold:
+        """依据 idle 时长推进状态并累加时间。
+
+        全屏内容消费（看视频 / 演示 / 全屏应用）期间改用**放宽阈值**：
+        那正是视觉负荷最高的场景，而人恰恰几乎不碰键鼠。若沿用常规阈值，
+        「看视频」会被判成「离开」，眨眼提示与休息计时全部停摆。
+        """
+        fullscreen = self._read_fullscreen()
+        if fullscreen != self._fullscreen:
+            self._fullscreen = fullscreen
+            logger.info(
+                "全屏内容消费%s：豁免阈值 %.0fs / %.0fs（常规 %.0fs / %.0fs）",
+                "开始" if fullscreen else "结束",
+                self._fullscreen_away_threshold,
+                self._fullscreen_natural_rest_threshold,
+                self._away_threshold,
+                self._natural_rest_threshold,
+            )
+
+        if fullscreen:
+            away_threshold = self._fullscreen_away_threshold
+            natural_rest_threshold = self._fullscreen_natural_rest_threshold
+        else:
+            away_threshold = self._away_threshold
+            natural_rest_threshold = self._natural_rest_threshold
+
+        if idle >= natural_rest_threshold:
             # 明确离开：结束会话（重置计时器）
             if self._state is not ScreenSessionState.OFF:
                 self._away_seconds += delta
                 self._end_session("natural_rest", publish_natural_rest=True)
             return
 
-        if idle >= self._away_threshold:
+        if idle >= away_threshold:
             # 疑似离开：暂停累计，但**不重置**——回来接着算
             self._away_seconds += delta
             self._state = ScreenSessionState.AWAY
@@ -227,8 +301,14 @@ class ScreenSessionEngine:
         if self._state is ScreenSessionState.OFF:
             # 会话已结束（自然休息/锁屏后），重新开始一个新会话
             self._start_new_session()
-        elif self._state is ScreenSessionState.AWAY and idle > self._resume_threshold:
-            # 仍在 AWAY 与 ON 的灰区：保持在 AWAY，不累计暴露
+        elif (
+            self._state is ScreenSessionState.AWAY
+            and not fullscreen
+            and idle > self._resume_threshold
+        ):
+            # 仍在 AWAY 与 ON 的灰区：保持在 AWAY，不累计暴露。
+            # 全屏内容消费时豁免此约束——用户可能刚读完长文档就全屏放视频，
+            # 那种情况应当立刻恢复为「在看内容」。
             return
         self._state = ScreenSessionState.ON
         self._exposure_seconds += delta
@@ -336,6 +416,7 @@ class ScreenSessionEngine:
                 session_started_at=self._session_started_at,
                 idle_seconds=self._idle_seconds,
                 ended_reason=self._ended_reason,
+                fullscreen=self._fullscreen,
             )
 
     def is_exposed(self) -> bool:
@@ -347,6 +428,8 @@ class ScreenSessionEngine:
         away: Optional[float] = None,
         natural_rest: Optional[float] = None,
         resume: Optional[float] = None,
+        fullscreen_away: Optional[float] = None,
+        fullscreen_natural_rest: Optional[float] = None,
     ) -> None:
         """热更新阈值（设置页修改后立即生效）。"""
         with self._lock:
@@ -356,11 +439,18 @@ class ScreenSessionEngine:
                 self._natural_rest_threshold = float(natural_rest)
             if resume is not None:
                 self._resume_threshold = float(resume)
+            if fullscreen_away is not None:
+                self._fullscreen_away_threshold = float(fullscreen_away)
+            if fullscreen_natural_rest is not None:
+                self._fullscreen_natural_rest_threshold = float(
+                    fullscreen_natural_rest
+                )
 
     def __repr__(self) -> str:  # pragma: no cover - 调试辅助
         snap = self.get_snapshot()
         return (
             f"ScreenSessionEngine(state={snap.state.value}, "
             f"exposure={snap.exposure_seconds:.1f}s, "
-            f"away={snap.away_seconds:.1f}s)"
+            f"away={snap.away_seconds:.1f}s, "
+            f"fullscreen={snap.fullscreen})"
         )

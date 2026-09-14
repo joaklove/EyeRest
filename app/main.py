@@ -140,6 +140,10 @@ def main() -> int:
     # 键鼠空闲 ≠ 眼睛没在看屏幕。看 PDF / 视频 / 代码时可以几分钟不碰键鼠，
     # 但视觉负荷一点没少。因此休息与眨眼计时一律基于「屏幕暴露」，
     # GetLastInputInfo 只用于判断「是否长时间离开了电脑」。
+    #
+    # fullscreen_provider 提供第二重保险：检测到「全屏内容消费」
+    # （看视频 / 全屏演示 / 全屏应用）时改用放宽阈值，避免把看视频
+    # 误判成离开——那正是视觉负荷最高、最不该停提示的场景。
     # ------------------------------------------------------------------
     screen_session = ScreenSessionEngine(
         clock=default_clock,
@@ -148,8 +152,14 @@ def main() -> int:
         away_threshold=settings["away_threshold"],
         natural_rest_threshold=settings["natural_rest_threshold"],
         resume_threshold=settings["session_resume_threshold"],
+        fullscreen_provider=fullscreen_detector.is_fullscreen_content,
     )
-    logger.info("ScreenSessionEngine 已初始化（V1.0 屏幕暴露模型）")
+    logger.info(
+        "ScreenSessionEngine 已初始化（V1.0 屏幕暴露模型；"
+        "全屏豁免阈值 %.0fs / %.0fs）",
+        defaults.FULLSCREEN_AWAY_THRESHOLD,
+        defaults.FULLSCREEN_NATURAL_REST_THRESHOLD,
+    )
 
     blink_engine = BlinkEngine(
         clock=default_clock,
