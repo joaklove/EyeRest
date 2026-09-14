@@ -102,6 +102,17 @@ def snapshot_c_drive() -> dict[str, str]:
     return out
 
 
+def is_runtime_file(key: str) -> bool:
+    """快照里的这条记录是否为**运行时**文件（有实例在跑就会变）。
+
+    ``stats.json`` 每约 30 秒落一次盘、``logs/*.log`` 每次事件都追加 ——
+    它们被写**不代表构建写错了地方**，只代表机器上还有另一个实例在跑。
+    真正该报警的是 ``config.json`` 这类只在用户改动设置时才写的文件。
+    """
+    tail = key.replace("\\", "/")
+    return tail.endswith("stats.json") or "/logs/" in tail or tail.endswith(".log")
+
+
 def app_running() -> bool:
     try:
         res = subprocess.run(
@@ -265,7 +276,16 @@ def verify_final(bk: Path, c_before: dict[str, str]) -> None:
     if c_before != c_after:
         changed = {k for k in set(c_before) | set(c_after)
                    if c_before.get(k) != c_after.get(k)}
-        die(f"C 盘数据目录被改动了：{sorted(changed)}")
+        if all(is_runtime_file(k) for k in changed):
+            # logs/ 与 stats.json 是**运行时**文件：只要机器上还有另一个实例在跑，
+            # 它们就一直在变（每 30s 落一次统计）。构建本身不碰它们（只读快照）。
+            # 最可能的来源：有人以**开发模式**启动了应用 —— 非 frozen 会落 %APPDATA%。
+            log(f"⚠ C 盘有变化，但仅限运行时文件：{sorted(changed)}")
+            log("  这不像是本次构建写的。多半是另一个实例在跑，排查：")
+            log(r'    tail -3 "%APPDATA%\EyeRest\logs\eyerest.log"    # 若时间戳是刚才 → 确有实例')
+            log("  处置：关掉它以改回便携版 dist/EyeRest/EyeRest-Portable.bat（不再写 C 盘）")
+            return
+        die(f"C 盘数据目录被改动了（非运行时文件）：{sorted(changed)}")
     log(f"C 盘数据目录未被写（{'空/不存在' if not c_after else str(len(c_after)) + ' 个文件比对一致'}）")
 
 
