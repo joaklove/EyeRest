@@ -64,7 +64,7 @@ class BreakService:
         "cue_pos_monitor": default_constants.CUE_POS_MONITOR,
         "cue_position_locked": default_constants.CUE_POSITION_LOCKED,      # 锁定位置
         "cue_intensity": default_constants.CUE_INTENSITY,                  # 标准强度
-        # --- 声音（V0.5 五套提示音）---
+        # --- 声音（提示音方案，清单真源在 sound_synth.SCHEMES）---
         "enable_sound": default_constants.ENABLE_SOUND,                    # 提示音总开关
         "sound_scheme": default_constants.SOUND_SCHEME,                    # 音效方案
         "sound_volume": default_constants.SOUND_VOLUME,                    # 音量 0~1

@@ -91,7 +91,7 @@ def main() -> int:
     logger.info("BreakService 已初始化（配置: %s）", get_settings_store().path)
 
     # ------------------------------------------------------------------
-    # 提示音服务（V0.5：五套方案，本地合成，不抢焦点）
+    # 提示音服务（本地合成，不抢焦点；方案清单见 sound_synth.SCHEMES）
     # ------------------------------------------------------------------
     sound = SoundService(
         enabled=settings["enable_sound"],

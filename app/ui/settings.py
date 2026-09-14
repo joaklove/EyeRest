@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 from app.i18n import get_language, get_translator, set_language, tr
 from app.services.break_service import BreakService
 from app.ui.theme import tokens
+from app.utils import sound_synth
 from app.utils.logger import get_logger
 
 _log = get_logger(__name__)
@@ -106,12 +107,12 @@ _COMBO_FIELDS: list[tuple[str, str, list[tuple[str, str]]]] = [
         ("standard", "settings.intensity_standard"),
         ("prominent", "settings.intensity_prominent"),
     ]),
+    # 选项由合成器的 SCHEMES 生成，不在这里手抄一份清单 ——
+    # 手抄的代价是"加了音色但设置页看不到"，而且不报错。
+    # i18n 键遵循统一约定 ``settings.sound_<scheme>``（由测试守门，见
+    # tests/test_sound_synth.py）。
     ("sound_scheme", "settings.sound_scheme", [
-        ("breath", "settings.sound_breath"),
-        ("wood", "settings.sound_wood"),
-        ("glass", "settings.sound_glass"),
-        ("nature", "settings.sound_nature"),
-        ("bell", "settings.sound_bell"),
+        (scheme, f"settings.sound_{scheme}") for scheme in sound_synth.SCHEMES
     ]),
 ]
 

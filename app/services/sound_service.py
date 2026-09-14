@@ -1,9 +1,11 @@
-"""提示音服务（V0.5：五套方案 + 不抢焦点播放）。
+"""提示音服务（V0.5：五套轻提示音 → V0.6.4：八套，含钵 / 木鱼 / 钟 + 不抢焦点播放）。
 
 设计要点：
 
 * **音效本地合成**：首次使用时由 :mod:`app.utils.sound_synth` 生成 WAV
   到数据目录 ``sounds/``，不需要打包任何音频资源
+* **方案列表以合成器为真源**：``SCHEMES`` 直接引用 :data:`app.utils.sound_synth.SCHEMES`，
+  避免"合成器加了音色、设置页却看不到"这类两处清单不同步的问题
 * **不抢焦点**：用 ``QSoundEffect`` 播放，不弹窗、不激活窗口、不阻塞输入
 * **低打扰**：Blink 不在每次 Cue 出声，只在每个 Blink Cycle 结束时响一次
 * **强度联动**：安静 = 静音；标准 = 正常音量；明显 = 稍大
@@ -22,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import defaults
+from app.utils import sound_synth
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -61,12 +64,12 @@ class SoundService:
     Args:
         sounds_dir: 音效文件目录；默认使用数据目录下 ``sounds/``。
         enabled: 是否启用提示音。
-        scheme: 音效方案（``wood``/``glass``/``breath``/``nature``/``bell``）。
+        scheme: 音效方案，取值见 :data:`app.utils.sound_synth.SCHEMES`。
         volume: 基础音量 0.0~1.0。
         intensity: 提醒强度（``quiet``/``standard``/``prominent``）。
     """
 
-    SCHEMES: tuple[str, ...] = ("breath", "wood", "glass", "nature", "bell")
+    SCHEMES: tuple[str, ...] = sound_synth.SCHEMES
 
     def __init__(
         self,
@@ -195,9 +198,10 @@ class SoundService:
     # 音效文件
     # ------------------------------------------------------------------
     def ensure_sounds(self) -> None:
-        """确保五套音效文件都已生成（缺失才合成）。"""
-        from app.utils import sound_synth
+        """确保全部音效文件都已生成（缺失才合成）。
 
+        只补缺、不覆盖 —— 新增方案后旧文件不会重合成，用户的试听结果稳定。
+        """
         try:
             self._dir.mkdir(parents=True, exist_ok=True)
         except OSError:

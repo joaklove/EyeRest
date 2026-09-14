@@ -642,7 +642,9 @@ body {
     数字输入框用 <code>type="text"</code> 渲染，忠实于代码里的 <code>QAbstractSpinBox.NoButtons</code> 口径 ——
     <b>没有 +/− 箭头</b>。每张节奏卡左侧色条取自对应节奏色，关闭态整卡降为 <code>bg/soft</code> 并去阴影。
     字段与取值范围对齐 <code>settings.py:57-73</code>：眨眼 周期 30–180s / 提示间隔 5–30s；远眺 5–60min / 5–60s；
-    活动 20–120min / 1–10min；长休 30–180min / 1–30min。真实应用里本页超出 680px 需滚动，此处展开以便看全。
+    活动 20–120min / 1–10min；长休 30–180min / 1–30min。真实应用里本页超出 680px 需滚动，此处展开以便看全。<br>
+    <b>提示音</b>：真实控件是<b>下拉框</b>而非 pill 组（8 项 pill 会占三行），此处沿用 pill 语言示意，
+    取值与 <code>sound_synth.SCHEMES</code> 一致 —— 本板此前曾画出「风铃」这一实现里不存在的选项，已更正。
   </p>
   <div class="stage">
     <div class="win win-auto">
@@ -717,7 +719,9 @@ body {
           <div class="prow"><span class="p-l">强度</span><div class="p-set">
             <span class="pill">安静</span><span class="pill sel">标准</span><span class="pill">醒目</span></div></div>
           <div class="prow"><span class="p-l">提示音</span><div class="p-set">
-            <span class="pill sel">呼吸</span><span class="pill">木鱼</span><span class="pill">风铃</span></div></div>
+            <span class="pill sel">呼吸</span><span class="pill">木质</span><span class="pill">玻璃</span>
+            <span class="pill">自然</span><span class="pill">铃音</span><span class="pill">颂钵</span>
+            <span class="pill">木鱼</span><span class="pill">钟</span></div></div>
         </div>
       </main>
     </div>
